@@ -2,6 +2,9 @@
     import { type ParsedChat } from "../lib/parser";
     import MostActive from "./features/most-active.svelte";
     import ChatIntensity from "./features/chat-intensity.svelte";
+    import ResponseTime from "./features/response-time.svelte";
+    import WordCloud from "./features/word-cloud.svelte";
+    import ChatHeatmap from "./features/chat-heatmap.svelte";
 
     interface Props {
         data: ParsedChat;
@@ -10,12 +13,21 @@
 
     let { data, onReset }: Props = $props();
 
-    type Tab = "most-active" | "chat-intensity";
+    type Tab =
+        | "most-active"
+        | "chat-intensity"
+        | "response-time"
+        | "word-cloud"
+        | "heatmap";
     let activeTab = $state<Tab>("most-active");
 
+    // All tabs — response-time visible for all but shows a "not available" msg for groups
     const tabs: { id: Tab; label: string; icon: string }[] = [
         { id: "most-active", label: "Paling Aktif", icon: "👑" },
-        { id: "chat-intensity", label: "Intensitas Chat", icon: "📈" },
+        { id: "chat-intensity", label: "Intensitas", icon: "📈" },
+        { id: "response-time", label: "Response Time", icon: "⏱️" },
+        { id: "word-cloud", label: "Kata & Emoji", icon: "�" },
+        { id: "heatmap", label: "Heatmap", icon: "🗓️" },
     ];
 
     function formatDate(d: Date) {
@@ -72,7 +84,7 @@
     <div class="info-strip">
         <div class="info-strip-inner">
             <span class="info-item">
-                <span class="info-label">Data backup:</span>
+                <span class="info-label">Backup:</span>
                 <span class="info-value"
                     >{formatDate(data.dateRange.start)} — {formatDate(
                         data.dateRange.end,
@@ -81,7 +93,7 @@
             </span>
             <span class="info-separator">·</span>
             <span class="info-item">
-                <span class="info-label">Total pesan:</span>
+                <span class="info-label">Pesan:</span>
                 <span class="info-value"
                     >{data.messages.length.toLocaleString("id-ID")}</span
                 >
@@ -89,7 +101,7 @@
             <span class="info-separator">·</span>
             <span class="info-item">
                 <span class="info-label">Peserta:</span>
-                <span class="info-value">{data.participants.length} orang</span>
+                <span class="info-value">{data.participants.length}</span>
             </span>
             <span class="info-separator">·</span>
             <span class="info-item">
@@ -111,6 +123,20 @@
                 messages={data.messages}
                 dateRange={data.dateRange}
             />
+        {:else if activeTab === "response-time"}
+            <ResponseTime
+                messages={data.messages}
+                participants={data.participants}
+                isGroup={data.isGroup}
+                dateRange={data.dateRange}
+            />
+        {:else if activeTab === "word-cloud"}
+            <WordCloud
+                messages={data.messages}
+                participants={data.participants}
+            />
+        {:else if activeTab === "heatmap"}
+            <ChatHeatmap messages={data.messages} dateRange={data.dateRange} />
         {/if}
     </main>
 </div>
@@ -134,13 +160,13 @@
     }
 
     .nav-inner {
-        max-width: 1200px;
+        max-width: 1280px;
         margin: 0 auto;
         padding: 0 24px;
         height: 60px;
         display: flex;
         align-items: center;
-        gap: 24px;
+        gap: 20px;
     }
 
     .nav-brand {
@@ -165,25 +191,28 @@
 
     .nav-tabs {
         display: flex;
-        gap: 4px;
+        gap: 2px;
         flex: 1;
         justify-content: center;
+        overflow-x: auto;
     }
 
     .tab-btn {
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 7px 18px;
+        padding: 7px 14px;
         border-radius: 8px;
         border: 1px solid transparent;
         background: transparent;
         color: var(--text-secondary);
-        font-size: 0.88rem;
+        font-size: 0.82rem;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;
         font-family: inherit;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .tab-btn:hover {
@@ -199,7 +228,7 @@
     }
 
     .tab-icon {
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .nav-actions {
@@ -235,7 +264,7 @@
     }
 
     .info-strip-inner {
-        max-width: 1200px;
+        max-width: 1280px;
         margin: 0 auto;
         display: flex;
         flex-wrap: wrap;
@@ -253,12 +282,10 @@
     .info-label {
         color: var(--text-muted);
     }
-
     .info-value {
         color: var(--text-primary);
         font-weight: 600;
     }
-
     .info-separator {
         color: var(--text-muted);
     }
@@ -266,34 +293,29 @@
     /* Content */
     .content {
         flex: 1;
-        max-width: 1200px;
+        max-width: 1280px;
         width: 100%;
         margin: 0 auto;
         padding: 32px 24px;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
         .nav-inner {
-            padding: 0 16px;
-            gap: 12px;
+            padding: 0 12px;
+            gap: 10px;
         }
-
         .tab-label {
             display: none;
         }
-
         .tab-icon {
-            font-size: 18px;
+            font-size: 16px;
         }
-
         .tab-btn {
-            padding: 8px 12px;
+            padding: 8px 10px;
         }
-
         .info-separator {
             display: none;
         }
-
         .content {
             padding: 20px 16px;
         }

@@ -116,6 +116,29 @@
         filteredBuckets().reduce((s, [, v]) => s + v, 0),
     );
 
+    // Conversation Gaps: top 5 longest silences
+    const topGaps = $derived(() => {
+        const msgs = messages;
+        if (msgs.length < 2) return [];
+        const gaps: { start: Date; end: Date; days: number }[] = [];
+        for (let i = 1; i < msgs.length; i++) {
+            const delta = msgs[i].date.getTime() - msgs[i - 1].date.getTime();
+            const days = delta / (1000 * 60 * 60 * 24);
+            if (days >= 1) {
+                gaps.push({ start: msgs[i - 1].date, end: msgs[i].date, days });
+            }
+        }
+        return gaps.sort((a, b) => b.days - a.days).slice(0, 5);
+    });
+
+    function fmtGapDate(d: Date) {
+        return d.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+        });
+    }
+
     // Chart
     let canvasEl = $state<HTMLCanvasElement | null>(null);
     let chartInstance: Chart | null = null;
@@ -200,7 +223,7 @@
                                 return formatMonthLong(buckets[idx]?.[0] ?? "");
                             },
                             label: (ctx) =>
-                                ` ${ctx.parsed.y.toLocaleString("id-ID")} pesan`,
+                                ` ${(ctx.parsed.y ?? 0).toLocaleString("id-ID")} pesan`,
                         },
                     },
                 },
@@ -374,6 +397,31 @@
                 {/if}
             </div>
         </div>
+    </div>
+
+    <!-- Conversation Gap -->
+    <div class="gap-section animate-fade-up" style="animation-delay: 0.25s">
+        <h3 class="year-title">🕳️ Conversation Gap Terpanjang</h3>
+        {#if topGaps().length === 0}
+            <p style="color: var(--text-muted); font-size: 0.88rem;">
+                Tidak ada gap signifikan.
+            </p>
+        {:else}
+            <div class="gap-list">
+                {#each topGaps() as gap, i}
+                    <div class="gap-row glass-card">
+                        <span class="gap-rank">#{i + 1}</span>
+                        <span class="gap-dates"
+                            >{fmtGapDate(gap.start)} → {fmtGapDate(
+                                gap.end,
+                            )}</span
+                        >
+                        <span class="gap-days">{Math.round(gap.days)} hari</span
+                        >
+                    </div>
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <!-- Year breakdown -->
@@ -686,5 +734,47 @@
     .year-months {
         font-size: 0.72rem;
         color: var(--text-muted);
+    }
+
+    /* Conversation Gap */
+    .gap-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .gap-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .gap-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 18px;
+    }
+
+    .gap-rank {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        font-weight: 700;
+        width: 28px;
+        flex-shrink: 0;
+    }
+
+    .gap-dates {
+        flex: 1;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .gap-days {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--pink-300);
+        flex-shrink: 0;
     }
 </style>
