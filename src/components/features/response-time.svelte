@@ -28,31 +28,31 @@
     let { messages, participants, isGroup, dateRange }: Props = $props();
 
     // --- Date range filter ---
-    const allMonthBuckets = $derived(() => {
+    const allDateBuckets = $derived(() => {
         const keys = new Set<string>();
         for (const m of messages) {
-            const k = `${m.date.getFullYear()}-${String(m.date.getMonth() + 1).padStart(2, "0")}`;
+            const k = `${m.date.getFullYear()}-${String(m.date.getMonth() + 1).padStart(2, "0")}-${String(m.date.getDate()).padStart(2, "0")}`;
             keys.add(k);
         }
         return Array.from(keys).sort();
     });
 
-    let startKey = $state("");
-    let endKey = $state("");
+    let startDate = $state("");
+    let endDate = $state("");
 
     $effect(() => {
-        const buckets = allMonthBuckets();
-        if (buckets.length > 0 && !startKey) {
-            startKey = buckets[0];
-            endKey = buckets[buckets.length - 1];
+        const buckets = allDateBuckets();
+        if (buckets.length > 0 && !startDate) {
+            startDate = buckets[0];
+            endDate = buckets[buckets.length - 1];
         }
     });
 
     const filteredMessages = $derived(() => {
-        if (!startKey && !endKey) return messages;
+        if (!startDate && !endDate) return messages;
         return messages.filter((m) => {
-            const k = `${m.date.getFullYear()}-${String(m.date.getMonth() + 1).padStart(2, "0")}`;
-            return k >= (startKey || "") && k <= (endKey || "9999-99");
+            const k = `${m.date.getFullYear()}-${String(m.date.getMonth() + 1).padStart(2, "0")}-${String(m.date.getDate()).padStart(2, "0")}`;
+            return k >= (startDate || "") && k <= (endDate || "9999-99-99");
         });
     });
 
@@ -81,28 +81,6 @@
 
         worker.onmessage = (e) => {
             if (e.data.type === "RESPONSE_TIME" && e.data.success) {
-                // Formatting payload
-                const byUser = e.data.result.byUser;
-                const dists = e.data.result.dists ?? {
-                    [`${participants[0]}→${participants[1]}`]: [0, 0, 0, 0, 0],
-                    [`${participants[1]}→${participants[0]}`]: [0, 0, 0, 0, 0],
-                };
-                const formattedStats: StatItem[] = [];
-                for (const [p, val] of Object.entries(byUser)) {
-                    formattedStats.push({
-                        key: p,
-                        avg: val as number,
-                        median: 0,
-                        min: 0,
-                        max: 0,
-                        count: 0, // Incomplete worker payload handled soon.
-                        dist: [0, 0, 0, 0, 0],
-                    });
-                }
-                // (Wait, the worker implementation of response time needs full distribution arrays, so I'll need to overwrite response time logic entirely locally or move local logic directly to worker).
-                // Moving all logic to worker is safer.
-
-                // Let's rewrite the entire worker logic for response-time to match what the component needs.
                 stats = e.data.result.stats || null;
                 isCalculating = false;
             }
@@ -149,78 +127,70 @@
         "> 1 hr",
     ];
 
-    let canvas1 = $state<HTMLCanvasElement | null>(null);
-    let canvas2 = $state<HTMLCanvasElement | null>(null);
-    let charts: (Chart | null)[] = [null, null];
-
-    function buildCharts() {
-        const s = stats;
-        if (!s || s.length === 0) return;
-
-        const canvases = [canvas1, canvas2];
-        s.forEach((item, i) => {
-            if (!canvases[i]) return;
-            charts[i]?.destroy();
-            charts[i] = new Chart(canvases[i]!, {
-                type: "bar",
-                data: {
-                    labels: DIST_LABELS,
-                    datasets: [
-                        {
-                            label: "Response count",
-                            data: item.dist,
-                            backgroundColor: [
-                                "rgba(52, 211, 153, 0.7)",
-                                "rgba(236, 72, 153, 0.8)",
-                                "rgba(236, 72, 153, 0.6)",
-                                "rgba(236, 72, 153, 0.4)",
-                                "rgba(239, 68, 68, 0.6)",
-                            ],
-                            borderRadius: 6,
-                            borderWidth: 0,
-                        },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: "rgba(26,26,46,0.97)",
-                            titleColor: "#f9a8d4",
-                            bodyColor: "#a1a1c7",
-                            borderColor: "rgba(236,72,153,0.3)",
-                            borderWidth: 1,
-                            callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.y} times`,
-                            },
-                        },
+    function chartAction(node: HTMLCanvasElement, item: StatItem) {
+        const chart = new Chart(node, {
+            type: "bar",
+            data: {
+                labels: DIST_LABELS,
+                datasets: [
+                    {
+                        label: "Response count",
+                        data: [...item.dist],
+                        backgroundColor: [
+                            "rgba(52, 211, 153, 0.7)",
+                            "rgba(236, 72, 153, 0.8)",
+                            "rgba(236, 72, 153, 0.6)",
+                            "rgba(236, 72, 153, 0.4)",
+                            "rgba(239, 68, 68, 0.6)",
+                        ],
+                        borderRadius: 6,
+                        borderWidth: 0,
                     },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: "#6b6b8e", font: { size: 11 } },
-                        },
-                        y: {
-                            grid: { color: "rgba(255,255,255,0.04)" },
-                            ticks: { color: "#6b6b8e", font: { size: 11 } },
-                            beginAtZero: true,
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: "rgba(26,26,46,0.97)",
+                        titleColor: "#f9a8d4",
+                        bodyColor: "#a1a1c7",
+                        borderColor: "rgba(236,72,153,0.3)",
+                        borderWidth: 1,
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.parsed.y} times`,
                         },
                     },
                 },
-            });
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: "#6b6b8e", font: { size: 11 } },
+                    },
+                    y: {
+                        grid: { color: "rgba(255,255,255,0.04)" },
+                        ticks: { color: "#6b6b8e", font: { size: 11 } },
+                        beginAtZero: true,
+                    },
+                },
+            },
         });
-    }
 
-    $effect(() => {
-        const _ = stats;
-        if ((canvas1 || canvas2) && !isCalculating) buildCharts();
-    });
+        return {
+            update(newItem: StatItem) {
+                chart.data.datasets[0].data = [...newItem.dist];
+                chart.update();
+            },
+            destroy() {
+                chart.destroy();
+            },
+        };
+    }
 
     onMount(() => {
         return () => {
-            charts.forEach((c) => c?.destroy());
             worker?.terminate();
         };
     });
@@ -251,18 +221,17 @@
                 </p>
             </div>
 
-            <!-- Date range filter -->
             <div class="date-filter glass-card">
                 <div class="filter-row">
                     <div class="filter-group">
                         <label class="filter-label" for="rt-start">From</label>
                         <input
                             id="rt-start"
-                            type="month"
-                            class="month-input"
-                            bind:value={startKey}
-                            min={allMonthBuckets()[0] ?? ""}
-                            max={(endKey || allMonthBuckets().at(-1)) ?? ""}
+                            type="date"
+                            class="date-input"
+                            bind:value={startDate}
+                            min={allDateBuckets()[0] ?? ""}
+                            max={(endDate || allDateBuckets().at(-1)) ?? ""}
                         />
                     </div>
                     <span class="filter-sep">—</span>
@@ -270,18 +239,18 @@
                         <label class="filter-label" for="rt-end">To</label>
                         <input
                             id="rt-end"
-                            type="month"
-                            class="month-input"
-                            bind:value={endKey}
-                            min={(startKey || allMonthBuckets()[0]) ?? ""}
-                            max={allMonthBuckets().at(-1) ?? ""}
+                            type="date"
+                            class="date-input"
+                            bind:value={endDate}
+                            min={(startDate || allDateBuckets()[0]) ?? ""}
+                            max={allDateBuckets().at(-1) ?? ""}
                         />
                     </div>
                     <button
                         class="reset-btn"
                         onclick={() => {
-                            startKey = allMonthBuckets()[0] ?? "";
-                            endKey = allMonthBuckets().at(-1) ?? "";
+                            startDate = allDateBuckets()[0] ?? "";
+                            endDate = allDateBuckets().at(-1) ?? "";
                         }}
                     >
                         Reset
@@ -348,17 +317,13 @@
                 class="charts-grid animate-fade-up"
                 style="animation-delay: 0.1s"
             >
-                {#each stats! as item, i}
+                {#each stats! as item}
                     <div class="chart-card glass-card">
                         <div class="chart-title">
                             Response Time Distribution — {shortName(item.key)}
                         </div>
                         <div class="chart-wrap">
-                            {#if i === 0}
-                                <canvas bind:this={canvas1}></canvas>
-                            {:else}
-                                <canvas bind:this={canvas2}></canvas>
-                            {/if}
+                            <canvas use:chartAction={item}></canvas>
                         </div>
                     </div>
                 {/each}
@@ -468,7 +433,7 @@
         letter-spacing: 0.05em;
     }
 
-    .month-input {
+    .date-input {
         background: var(--bg-secondary);
         border: 1px solid var(--border-subtle);
         border-radius: 8px;
@@ -480,10 +445,10 @@
         transition: border-color 0.2s;
     }
 
-    .month-input:focus {
+    .date-input:focus {
         border-color: var(--pink-500);
     }
-    .month-input::-webkit-calendar-picker-indicator {
+    .date-input::-webkit-calendar-picker-indicator {
         filter: invert(60%) sepia(50%) saturate(800%) hue-rotate(280deg);
         cursor: pointer;
     }

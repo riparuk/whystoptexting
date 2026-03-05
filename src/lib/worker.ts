@@ -64,48 +64,100 @@ function topItemsFromMsgs(msgs: Message[], type: "word" | "emoji", limit = 50): 
 }
 
 // Helpers for response time (1-on-1 logic)
+/**
+ * HOW THE ALGORITHM WORKS:
+ * 1. Only calculates for 1-on-1 chats.
+ * 2. It tracks the `lastSender` and `lastMsgTime`.
+ * 3. Whenever the sender changes, it means the new sender is replying to the `lastSender`.
+ * 4. The response time is calculated as (Current Message Time - `lastMsgTime`).
+ * 5. If the same sender sends multiple messages in a row, `lastMsgTime` gets updated to the latest message.
+ *    This ensures the response time measures how long it took the receiver to reply to the *last* message of the sender block.
+ * 6. If the gap between the messages is larger than 24 hours, it's considered a new conversation and NOT counted as a response.
+ * 7. Results are aggregated, returning minimum, maximum, median, average, and a frequency distribution.
+ */
 function calculateResponseTimes(messages: Message[], participants: string[], isGroup: boolean) {
     if (isGroup || participants.length !== 2) {
-        return { averageMs: 0, byUser: {} };
+        return { stats: [] };
     }
 
-    const byUser: Record<string, { ms: number; count: number }> = {
-        [participants[0]]: { ms: 0, count: 0 },
-        [participants[1]]: { ms: 0, count: 0 },
+    const p1 = participants[0];
+    const p2 = participants[1];
+
+    // Store response times in milliseconds
+    const responseTimes: Record<string, number[]> = {
+        [`${p1}→${p2}`]: [], // time it takes for p2 to reply to p1
+        [`${p2}→${p1}`]: [], // time it takes for p1 to reply to p2
     };
 
-    let prevMsg: Message | null = null;
-    let globalTotalMs = 0;
-    let globalReps = 0;
+    let lastSender: string | null = null;
+    let lastMsgTime: number = 0;
 
     for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
-        if (!prevMsg) {
-            prevMsg = msg;
+        if (msg.isSystem || !msg.sender) continue;
+
+        if (!lastSender) {
+            lastSender = msg.sender;
+            lastMsgTime = msg.date.getTime();
             continue;
         }
 
-        if (msg.sender !== prevMsg.sender) {
-            const delta = msg.date.getTime() - prevMsg.date.getTime();
-            if (delta > 0 && delta < 1000 * 60 * 60 * 24) {
-                byUser[msg.sender].ms += delta;
-                byUser[msg.sender].count++;
-                globalTotalMs += delta;
-                globalReps++;
+        if (msg.sender !== lastSender) {
+            const currentMsgTime = msg.date.getTime();
+            const diff = currentMsgTime - lastMsgTime;
+
+            if (diff > 0 && diff <= 24 * 60 * 60 * 1000) {
+                // Sender changed, so msg.sender is replying to lastSender
+                const key = `${lastSender}→${msg.sender}`;
+                if (responseTimes[key]) {
+                    responseTimes[key].push(diff);
+                }
             }
+
+            // Update state for next cycle
+            lastSender = msg.sender;
+            lastMsgTime = currentMsgTime;
+        } else {
+            // Consecutive messages by the same sender, update to the latest message time
+            lastMsgTime = msg.date.getTime();
         }
-        prevMsg = msg;
     }
 
-    const resByUser: Record<string, number> = {};
-    for (const [user, s] of Object.entries(byUser)) {
-        resByUser[user] = s.count > 0 ? s.ms / s.count : 0;
+    const stats: any[] = [];
+
+    for (const [key, times] of Object.entries(responseTimes)) {
+        if (times.length === 0) continue;
+
+        times.sort((a, b) => a - b);
+        const count = times.length;
+        const total = times.reduce((a, b) => a + b, 0);
+        const avg = (total / count) / 60000;
+        const median = times[Math.floor(count / 2)] / 60000;
+        const min = times[0] / 60000;
+        const max = times[count - 1] / 60000;
+
+        const dist = [0, 0, 0, 0, 0];
+        for (const t of times) {
+            const m = t / 60000;
+            if (m < 1) dist[0]++;
+            else if (m <= 5) dist[1]++;
+            else if (m <= 30) dist[2]++;
+            else if (m <= 60) dist[3]++;
+            else dist[4]++;
+        }
+
+        stats.push({
+            key,
+            avg,
+            median,
+            min,
+            max,
+            count,
+            dist,
+        });
     }
 
-    return {
-        averageMs: globalReps > 0 ? globalTotalMs / globalReps : 0,
-        byUser: resByUser
-    };
+    return { stats };
 }
 
 // Map the request handling
