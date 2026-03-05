@@ -126,11 +126,11 @@
     }
 
     function formatDuration(minutes: number) {
-        if (minutes < 1) return `< 1 menit`;
-        if (minutes < 60) return `${Math.round(minutes)} menit`;
+        if (minutes < 1) return `< 1 min`;
+        if (minutes < 60) return `${Math.round(minutes)} min`;
         const h = Math.floor(minutes / 60);
         const m = Math.round(minutes % 60);
-        return m > 0 ? `${h} jam ${m} menit` : `${h} jam`;
+        return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
     }
 
     function shortName(key: string) {
@@ -142,11 +142,11 @@
 
     // -- Distribution chart --
     const DIST_LABELS = [
-        "< 1 mnt",
-        "1–5 mnt",
-        "5–30 mnt",
-        "30–60 mnt",
-        "> 1 jam",
+        "< 1 min",
+        "1–5 min",
+        "5–30 min",
+        "30–60 min",
+        "> 1 hr",
     ];
 
     let canvas1 = $state<HTMLCanvasElement | null>(null);
@@ -167,7 +167,7 @@
                     labels: DIST_LABELS,
                     datasets: [
                         {
-                            label: "Jumlah respons",
+                            label: "Response count",
                             data: item.dist,
                             backgroundColor: [
                                 "rgba(52, 211, 153, 0.7)",
@@ -193,7 +193,7 @@
                             borderColor: "rgba(236,72,153,0.3)",
                             borderWidth: 1,
                             callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.y} kali`,
+                                label: (ctx) => ` ${ctx.parsed.y} times`,
                             },
                         },
                     },
@@ -231,12 +231,12 @@
         <!-- Not available for groups -->
         <div class="not-available glass-card">
             <div class="na-icon">🚫</div>
-            <h3 class="na-title">Tidak tersedia untuk chat grup</h3>
+            <h3 class="na-title">Not available for group chats</h3>
             <p class="na-desc">
-                Fitur Response Time hanya dapat dianalisis pada chat <strong
+                Response Time feature can only be analyzed in <strong
                     >1-on-1</strong
-                >, karena pada percakapan grup urutan balas-membalas tidak bisa
-                didefinisikan dengan jelas.
+                > chats, as in group conversations the order of replies cannot be
+                clearly defined.
             </p>
         </div>
     {:else}
@@ -245,9 +245,9 @@
             <div>
                 <h2 class="section-title">⏱️ Response Time</h2>
                 <p class="section-desc">
-                    Rata-rata waktu membalas pesan antara {participants[0]?.split(
+                    Average time to reply between {participants[0]?.split(
                         " ",
-                    )[0]} dan {participants[1]?.split(" ")[0]}
+                    )[0]} and {participants[1]?.split(" ")[0]}
                 </p>
             </div>
 
@@ -255,7 +255,7 @@
             <div class="date-filter glass-card">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label class="filter-label" for="rt-start">Dari</label>
+                        <label class="filter-label" for="rt-start">From</label>
                         <input
                             id="rt-start"
                             type="month"
@@ -267,7 +267,7 @@
                     </div>
                     <span class="filter-sep">—</span>
                     <div class="filter-group">
-                        <label class="filter-label" for="rt-end">Sampai</label>
+                        <label class="filter-label" for="rt-end">To</label>
                         <input
                             id="rt-end"
                             type="month"
@@ -293,14 +293,11 @@
         {#if isCalculating}
             <div class="empty glass-card">
                 <div class="spinner" style="margin: 0 auto 16px;"></div>
-                <p>Mengukur kecepatan balas...</p>
+                <p>Measuring reply speed...</p>
             </div>
         {:else if !stats || stats.length === 0}
             <div class="empty glass-card">
-                <p>
-                    Tidak cukup data untuk menghitung response time pada rentang
-                    ini.
-                </p>
+                <p>Not enough data to calculate response time in this range.</p>
             </div>
         {:else}
             <!-- Summary cards -->
@@ -314,7 +311,7 @@
                         <div class="avg-time gradient-text">
                             {formatDuration(item.avg)}
                         </div>
-                        <div class="avg-sub">rata-rata</div>
+                        <div class="avg-sub">average</div>
 
                         <div class="meta-grid">
                             <div class="meta-item">
@@ -324,21 +321,21 @@
                                 </div>
                             </div>
                             <div class="meta-item">
-                                <div class="meta-label">Tercepat</div>
+                                <div class="meta-label">Fastest</div>
                                 <div class="meta-value" style="color: #34d399">
                                     {formatDuration(item.min)}
                                 </div>
                             </div>
                             <div class="meta-item">
-                                <div class="meta-label">Terlama</div>
+                                <div class="meta-label">Slowest</div>
                                 <div class="meta-value" style="color: #f87171">
                                     {formatDuration(item.max)}
                                 </div>
                             </div>
                             <div class="meta-item">
-                                <div class="meta-label">Sampel</div>
+                                <div class="meta-label">Samples</div>
                                 <div class="meta-value">
-                                    {item.count.toLocaleString("id-ID")}
+                                    {item.count.toLocaleString("en-US")}
                                 </div>
                             </div>
                         </div>
@@ -354,7 +351,7 @@
                 {#each stats! as item, i}
                     <div class="chart-card glass-card">
                         <div class="chart-title">
-                            Distribusi Waktu Balas — {shortName(item.key)}
+                            Response Time Distribution — {shortName(item.key)}
                         </div>
                         <div class="chart-wrap">
                             {#if i === 0}
@@ -374,9 +371,9 @@
             >
                 <span class="note-icon">💡</span>
                 <p class="note-text">
-                    Hanya menghitung waktu balas saat pengirim berganti. Gap
-                    lebih dari <strong>24 jam</strong> dianggap percakapan baru dan
-                    tidak dihitung.
+                    Only measures reply time when the sender changes. Gaps
+                    larger than <strong>24 hours</strong> are considered new conversations
+                    and are excluded.
                 </p>
             </div>
         {/if}

@@ -86,7 +86,7 @@
     let chartInstance: Chart | null = null;
 
     function formatDate(d: Date) {
-        return d.toLocaleDateString("id-ID", {
+        return d.toLocaleDateString("en-US", {
             day: "numeric",
             month: "long",
             year: "numeric",
@@ -122,7 +122,7 @@
                 labels,
                 datasets: [
                     {
-                        label: "Jumlah Pesan",
+                        label: "Message Count",
                         data,
                         backgroundColor: items.map((_, i) => {
                             const opacity = 1 - (i / items.length) * 0.4;
@@ -153,7 +153,7 @@
                         callbacks: {
                             label: (ctx) => {
                                 const val = (ctx.parsed.x as number) ?? 0;
-                                return ` ${val.toLocaleString("id-ID")} pesan (${percentage(val)}%)`;
+                                return ` ${val.toLocaleString("en-US")} messages (${percentage(val)}%)`;
                             },
                         },
                     },
@@ -188,12 +188,12 @@
     <!-- Header -->
     <div class="section-header animate-fade-up">
         <div class="header-left">
-            <h2 class="section-title">👑 Siapa Paling Aktif?</h2>
+            <h2 class="section-title">👑 Who is Most Active?</h2>
             <p class="section-desc">
-                Berdasarkan total pesan dari <strong
+                Based on total messages from <strong
                     >{formatDate(dateRange.start)}</strong
                 >
-                sampai <strong>{formatDate(dateRange.end)}</strong>
+                to <strong>{formatDate(dateRange.end)}</strong>
             </p>
         </div>
         <!-- Filter buttons -->
@@ -241,7 +241,7 @@
                     </div>
                     <div class="rank-stats">
                         <div class="rank-count">
-                            {item.count.toLocaleString("id-ID")}
+                            {item.count.toLocaleString("en-US")}
                         </div>
                         <div class="rank-pct">{percentage(item.count)}%</div>
                     </div>
@@ -254,12 +254,12 @@
             class="chart-card glass-card animate-fade-up"
             style="animation-delay: 0.2s"
         >
-            <div class="chart-title">Perbandingan Jumlah Pesan</div>
+            <div class="chart-title">Message Count Comparison</div>
             {#if isCalculating}
                 <div class="calculating-overlay">
                     <div class="spinner"></div>
                     <p style="text-align:center; color: var(--text-muted)">
-                        Menghitung akumulasi pesan...
+                        Calculating message accumulation...
                     </p>
                 </div>
             {:else}
@@ -273,21 +273,21 @@
     <!-- Summary stats -->
     <div class="stats-row animate-fade-up" style="animation-delay: 0.3s">
         <div class="stat-card glass-card">
-            <div class="stat-label">Total Pesan</div>
+            <div class="stat-label">Total Messages</div>
             <div class="stat-value gradient-text">
-                {totalMessages.toLocaleString("id-ID")}
+                {totalMessages.toLocaleString("en-US")}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Peserta Aktif</div>
+            <div class="stat-label">Active Participants</div>
             <div class="stat-value gradient-text">{counts.length}</div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Rata-rata / Orang</div>
+            <div class="stat-label">Average / Person</div>
             <div class="stat-value gradient-text">
                 {counts.length > 0
                     ? Math.round(totalMessages / counts.length).toLocaleString(
-                          "id-ID",
+                          "en-US",
                       )
                     : 0}
             </div>

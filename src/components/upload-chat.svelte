@@ -21,7 +21,7 @@
                 const chatFile = zip.file(/(_chat\.txt)$/i)[0];
                 if (!chatFile) {
                     throw new Error(
-                        "File ZIP tidak berisi _chat.txt. Pastikan ini adalah export backup WhatsApp.",
+                        "ZIP file does not contain _chat.txt. Please ensure this is a WhatsApp backup export.",
                     );
                 }
                 chatText = await chatFile.async("string");
@@ -31,12 +31,12 @@
                 fileName = file.name;
             } else {
                 throw new Error(
-                    "Format file tidak didukung. Upload file .zip atau .txt dari export WhatsApp.",
+                    "Unsupported file format. Please upload a .zip or .txt file from a WhatsApp export.",
                 );
             }
 
             if (!chatText.trim()) {
-                throw new Error("File kosong atau tidak dapat dibaca.");
+                throw new Error("File is empty or unreadable.");
             }
 
             // Quick validation: check if it looks like a WhatsApp export
@@ -46,16 +46,14 @@
                 )
             ) {
                 throw new Error(
-                    "Format file tidak sesuai. Pastikan ini adalah backup chat WhatsApp.",
+                    "Invalid file format. Please ensure this is a WhatsApp chat backup.",
                 );
             }
 
             const parsed = parseWhatsAppChat(chatText);
 
             if (parsed.messages.length === 0) {
-                throw new Error(
-                    "Tidak ada pesan yang berhasil diparsing dari file ini.",
-                );
+                throw new Error("No messages could be parsed from this file.");
             }
 
             const base = import.meta.env.BASE_URL;
@@ -63,7 +61,7 @@
             await setChatData(parsed);
             window.location.href = base + "/" + "analytics";
         } catch (e: any) {
-            error = e.message || "Terjadi kesalahan saat memproses file.";
+            error = e.message || "An error occurred while processing the file.";
         } finally {
             isLoading = false;
         }
@@ -104,7 +102,7 @@
         <div class="logo-icon">💬</div>
         <h1 class="title gradient-text">WhyStopTexting</h1>
         <p class="subtitle">
-            Analisis backup chat WhatsApp kamu dengan visualisasi yang keren
+            Analyze your WhatsApp chat backup with cool visualizations
         </p>
     </div>
 
@@ -127,7 +125,7 @@
             <div class="loading-content">
                 <div class="spinner"></div>
                 <p class="loading-text">
-                    Memproses file{fileName ? ` "${fileName}"` : ""}...
+                    Processing file{fileName ? ` "${fileName}"` : ""}...
                 </p>
             </div>
         {:else}
@@ -137,20 +135,20 @@
                 </div>
                 <h2 class="drop-title">
                     {isDragging
-                        ? "Lepaskan file di sini!"
-                        : "Upload Backup Chat WhatsApp"}
+                        ? "Drop file here!"
+                        : "Upload WhatsApp Chat Backup"}
                 </h2>
                 <p class="drop-description">
-                    Seret & lepas file .zip atau .txt di sini,<br />
-                    atau <span class="click-link">klik untuk pilih file</span>
+                    Drag & drop a .zip or .txt file here,<br />
+                    or <span class="click-link">click to choose a file</span>
                 </p>
                 <div class="format-badges">
                     <span class="badge">.zip</span>
                     <span class="badge">.txt</span>
                 </div>
                 <p class="privacy-note">
-                    🔒 Semua data diproses lokal di browser kamu. Tidak ada yang
-                    dikirim ke server.
+                    🔒 All data is processed locally in your browser. Nothing is
+                    sent to the server.
                 </p>
             </div>
         {/if}
@@ -169,16 +167,16 @@
         class="instructions glass-card animate-fade-up"
         style="animation-delay: 0.2s"
     >
-        <h3 class="instructions-title">Cara Export Chat WhatsApp</h3>
+        <h3 class="instructions-title">How to Export WhatsApp Chat</h3>
         <ol class="instructions-list">
-            <li>Buka chat yang ingin dianalisis di WhatsApp</li>
+            <li>Open the chat you want to analyze in WhatsApp</li>
             <li>
                 Tap ⋮ (menu) → <strong>More</strong> →
                 <strong>Export chat</strong>
             </li>
-            <li>Pilih <strong>Without media</strong></li>
-            <li>Simpan file ZIP yang dihasilkan</li>
-            <li>Upload di sini ✨</li>
+            <li>Select <strong>Without media</strong></li>
+            <li>Save the generated ZIP file</li>
+            <li>Upload it here ✨</li>
         </ol>
     </div>
 </div>

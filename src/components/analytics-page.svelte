@@ -25,7 +25,7 @@
 {#if !$isStoreLoaded}
     <div class="loading-wrapper">
         <div class="spinner"></div>
-        <p>Memuat data analitik kamu...</p>
+        <p>Loading your analytics data...</p>
     </div>
 {:else if $isStoreLoaded && $chatStore}
     <Analytics data={$chatStore} onReset={triggerReset} />

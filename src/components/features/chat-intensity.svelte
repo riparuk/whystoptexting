@@ -104,7 +104,7 @@
     function formatMonthKey(key: string) {
         const [year, month] = key.split("-");
         const d = new Date(parseInt(year), parseInt(month) - 1, 1);
-        return d.toLocaleDateString("id-ID", {
+        return d.toLocaleDateString("en-US", {
             month: "short",
             year: "2-digit",
         });
@@ -113,7 +113,7 @@
     function formatMonthLong(key: string) {
         const [year, month] = key.split("-");
         const d = new Date(parseInt(year), parseInt(month) - 1, 1);
-        return d.toLocaleDateString("id-ID", {
+        return d.toLocaleDateString("en-US", {
             month: "long",
             year: "numeric",
         });
@@ -142,7 +142,7 @@
     );
 
     function fmtGapDate(d: Date) {
-        return d.toLocaleDateString("id-ID", {
+        return d.toLocaleDateString("en-US", {
             day: "numeric",
             month: "short",
             year: "numeric",
@@ -186,7 +186,7 @@
                 labels,
                 datasets: [
                     {
-                        label: "Jumlah Pesan",
+                        label: "Message Count",
                         data,
                         backgroundColor: isLine
                             ? (ctx: any) => {
@@ -233,7 +233,7 @@
                                 return formatMonthLong(buckets[idx]?.[0] ?? "");
                             },
                             label: (ctx) =>
-                                ` ${(ctx.parsed.y ?? 0).toLocaleString("id-ID")} pesan`,
+                                ` ${(ctx.parsed.y ?? 0).toLocaleString("en-US")} messages`,
                         },
                     },
                 },
@@ -269,8 +269,8 @@
     <!-- Header -->
     <div class="section-header animate-fade-up">
         <div>
-            <h2 class="section-title">📈 Intensitas Chat</h2>
-            <p class="section-desc">Pola dan tren pesan berdasarkan waktu</p>
+            <h2 class="section-title">📈 Chat Intensity</h2>
+            <p class="section-desc">Message patterns and trends over time</p>
         </div>
     </div>
 
@@ -280,7 +280,7 @@
         style="animation-delay: 0.05s"
     >
         <div class="control-group">
-            <label class="control-label" for="start-month">Dari</label>
+            <label class="control-label" for="start-month">From</label>
             <input
                 id="start-month"
                 type="month"
@@ -292,7 +292,7 @@
         </div>
         <div class="control-separator">—</div>
         <div class="control-group">
-            <label class="control-label" for="end-month">Sampai</label>
+            <label class="control-label" for="end-month">To</label>
             <input
                 id="end-month"
                 type="month"
@@ -336,12 +336,10 @@
         {#if isCalculating}
             <div class="calculating-overlay">
                 <div class="spinner"></div>
-                <p>Menganalisis intensitas waktu...</p>
+                <p>Analyzing temporal intensity...</p>
             </div>
         {:else if filteredBuckets().length === 0}
-            <div class="empty-chart">
-                Tidak ada data untuk rentang yang dipilih
-            </div>
+            <div class="empty-chart">No data for selected range</div>
         {:else}
             <div class="chart-wrap">
                 <canvas bind:this={canvasEl}></canvas>
@@ -352,29 +350,29 @@
     <!-- Stats row -->
     <div class="stats-row animate-fade-up" style="animation-delay: 0.2s">
         <div class="stat-card glass-card">
-            <div class="stat-label">Total Pesan (periode ini)</div>
+            <div class="stat-label">Total Messages (this period)</div>
             <div class="stat-value gradient-text">
-                {totalInRange.toLocaleString("id-ID")}
+                {totalInRange.toLocaleString("en-US")}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Jumlah Bulan</div>
+            <div class="stat-label">Month Count</div>
             <div class="stat-value gradient-text">
                 {filteredBuckets().length}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Rata-rata / Bulan</div>
+            <div class="stat-label">Average / Month</div>
             <div class="stat-value gradient-text">
                 {filteredBuckets().length > 0
                     ? Math.round(
                           totalInRange / filteredBuckets().length,
-                      ).toLocaleString("id-ID")
+                      ).toLocaleString("en-US")
                     : 0}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Bulan Tersibuk</div>
+            <div class="stat-label">Busiest Month</div>
             <div
                 class="stat-value gradient-text"
                 style="font-size: 0.95rem; line-height: 1.3"
@@ -382,7 +380,7 @@
                 {#if peakMonth()}
                     {formatMonthLong(peakMonth()![0])}
                     <div class="stat-sub">
-                        {peakMonth()![1].toLocaleString("id-ID")} pesan
+                        {peakMonth()![1].toLocaleString("en-US")} messages
                     </div>
                 {:else}
                     -
@@ -390,7 +388,7 @@
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Tren Periode</div>
+            <div class="stat-label">Period Trend</div>
             <div
                 class="stat-value"
                 class:trend-up={trendInfo()?.up}
@@ -400,7 +398,7 @@
                     {trendInfo()!.up ? "↑" : "↓"}
                     {Math.abs(trendInfo()!.pct)}%
                     <div class="stat-sub" style="color: var(--text-muted)">
-                        {trendInfo()!.up ? "meningkat" : "menurun"}
+                        {trendInfo()!.up ? "increasing" : "decreasing"}
                     </div>
                 {:else}
                     -
@@ -411,10 +409,10 @@
 
     <!-- Conversation Gap -->
     <div class="gap-section animate-fade-up" style="animation-delay: 0.25s">
-        <h3 class="year-title">🕳️ Conversation Gap Terpanjang</h3>
+        <h3 class="year-title">🕳️ Longest Conversation Gaps</h3>
         {#if topGaps.length === 0}
             <p style="color: var(--text-muted); font-size: 0.88rem;">
-                Tidak ada gap signifikan.
+                No significant gaps.
             </p>
         {:else}
             <div class="gap-list">
@@ -426,7 +424,7 @@
                                 gap.end,
                             )}</span
                         >
-                        <span class="gap-days">{Math.round(gap.days)} hari</span
+                        <span class="gap-days">{Math.round(gap.days)} days</span
                         >
                     </div>
                 {/each}
@@ -437,7 +435,7 @@
     <!-- Year breakdown -->
     {#if allYears().length > 1 && !isCalculating}
         <div class="year-section animate-fade-up" style="animation-delay: 0.3s">
-            <h3 class="year-title">Ringkasan per Tahun</h3>
+            <h3 class="year-title">Yearly Summary</h3>
             <div class="year-cards">
                 {#each allYears() as year}
                     {@const yearBuckets = allMonthBuckets.filter(([k]) =>
@@ -457,7 +455,7 @@
                     <div class="year-card glass-card">
                         <div class="year-label">{year}</div>
                         <div class="year-count gradient-text">
-                            {yearTotal.toLocaleString("id-ID")}
+                            {yearTotal.toLocaleString("en-US")}
                         </div>
                         <div class="year-bar-bg">
                             <div
@@ -468,7 +466,7 @@
                             ></div>
                         </div>
                         <div class="year-months">
-                            {yearBuckets.length} bulan
+                            {yearBuckets.length} months
                         </div>
                     </div>
                 {/each}

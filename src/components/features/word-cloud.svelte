@@ -88,9 +88,9 @@
     <!-- Header -->
     <div class="section-header animate-fade-up">
         <div>
-            <h2 class="section-title">💬 Kata & Emoji Favorit</h2>
+            <h2 class="section-title">💬 Favorite Words & Emojis</h2>
             <p class="section-desc">
-                Kata dan emoji yang paling sering dipakai dalam chat ini
+                Words and emojis most frequently used in this chat
             </p>
         </div>
 
@@ -102,21 +102,22 @@
                     class:active={viewMode === "overall"}
                     onclick={() => (viewMode = "overall")}
                 >
-                    🌐 Semua
+                    🌐 All
                 </button>
                 <button
                     class="toggle-btn"
                     class:active={viewMode === "by-user"}
                     onclick={() => (viewMode = "by-user")}
                 >
-                    👤 Per Orang
+                    👤 Per Person
                 </button>
             </div>
 
             <!-- User selector (only when by-user) -->
             {#if viewMode === "by-user"}
                 <div class="user-selector">
-                    <label class="filter-label" for="user-select">Peserta</label
+                    <label class="filter-label" for="user-select"
+                        >Participant</label
                     >
                     <select
                         id="user-select"
@@ -153,10 +154,9 @@
             <div class="calculating-overlay glass-card">
                 <div class="spinner"></div>
                 <p>
-                    Memproses kata dan emoji...<br />
+                    Processing words and emojis...<br />
                     <span style="font-size: 0.8em; color: var(--text-muted)"
-                        >Ini mungkin memakan waktu sebentar untuk data yang
-                        sangat besar.</span
+                        >This might take a moment for very large datasets.</span
                     >
                 </p>
             </div>
@@ -168,7 +168,7 @@
             >
                 <div class="list-header glass-card">
                     <div class="list-hdr-text">
-                        <span class="list-title">🔤 Kata Paling Sering</span>
+                        <span class="list-title">🔤 Most Frequent Words</span>
                         {#if viewMode === "by-user"}
                             <span class="badge"
                                 >{selectedUser.split(" ")[0]}</span
@@ -179,7 +179,7 @@
                         class="total-unique"
                         style="color: var(--text-muted); font-size:0.78rem"
                     >
-                        {computedWords.length} teratas
+                        top {computedWords.length}
                     </span>
                 </div>
 
@@ -204,14 +204,14 @@
                                 ></div>
                             </div>
                             <span class="word-count"
-                                >{item.count.toLocaleString("id-ID")}</span
+                                >{item.count.toLocaleString("en-US")}</span
                             >
                         </div>
                     {/each}
 
                     {#if displayedWords.length === 0}
                         <div class="empty-words">
-                            Tidak ada kata yang cukup sering muncul
+                            No words appear frequently enough
                         </div>
                     {/if}
                 </div>
@@ -223,7 +223,7 @@
                 style="animation-delay: 0.1s"
             >
                 <div class="list-header glass-card">
-                    <span class="list-title">😊 Emoji Favorit</span>
+                    <span class="list-title">😊 Favorite Emojis</span>
                     {#if viewMode === "by-user"}
                         <span class="badge">{selectedUser.split(" ")[0]}</span>
                     {/if}
@@ -231,7 +231,7 @@
 
                 {#if displayedEmojis.length === 0}
                     <div class="empty-emoji glass-card">
-                        <p>Tidak ada emoji terdeteksi dalam chat ini</p>
+                        <p>No emojis detected in this chat</p>
                     </div>
                 {:else}
                     <!-- Emoji bubbles -->
@@ -241,8 +241,8 @@
                             <div
                                 class="emoji-pill"
                                 title="{item.word} · {item.count.toLocaleString(
-                                    'id-ID',
-                                )} kali"
+                                    'en-US',
+                                )} times"
                                 style="font-size: {0.9 +
                                     ratio * 1.6}rem; opacity: {0.5 +
                                     ratio * 0.5}"
@@ -268,7 +268,7 @@
                                     ></div>
                                 </div>
                                 <span class="word-count"
-                                    >{item.count.toLocaleString("id-ID")}</span
+                                    >{item.count.toLocaleString("en-US")}</span
                                 >
                             </div>
                         {/each}

@@ -23,15 +23,15 @@
 
     // All tabs — response-time visible for all but shows a "not available" msg for groups
     const tabs: { id: Tab; label: string; icon: string }[] = [
-        { id: "most-active", label: "Paling Aktif", icon: "👑" },
-        { id: "chat-intensity", label: "Intensitas", icon: "📈" },
+        { id: "most-active", label: "Most Active", icon: "👑" },
+        { id: "chat-intensity", label: "Intensity", icon: "📈" },
         { id: "response-time", label: "Response Time", icon: "⏱️" },
-        { id: "word-cloud", label: "Kata & Emoji", icon: "😘" },
+        { id: "word-cloud", label: "Words & Emojis", icon: "😘" },
         { id: "heatmap", label: "Heatmap", icon: "🗓️" },
     ];
 
     function formatDate(d: Date) {
-        return d.toLocaleDateString("id-ID", {
+        return d.toLocaleDateString("en-US", {
             day: "numeric",
             month: "short",
             year: "numeric",
@@ -89,9 +89,9 @@
                 <button
                     class="reset-btn"
                     onclick={onReset}
-                    title="Upload file baru"
+                    title="Upload new file"
                 >
-                    <span>↩</span> Ganti File
+                    <span>↩</span> Change File
                 </button>
             </div>
         </div>
@@ -110,19 +110,19 @@
             </span>
             <span class="info-separator">·</span>
             <span class="info-item">
-                <span class="info-label">Pesan:</span>
+                <span class="info-label">Messages:</span>
                 <span class="info-value"
-                    >{data.messages.length.toLocaleString("id-ID")}</span
+                    >{data.messages.length.toLocaleString("en-US")}</span
                 >
             </span>
             <span class="info-separator">·</span>
             <span class="info-item">
-                <span class="info-label">Peserta:</span>
+                <span class="info-label">Participants:</span>
                 <span class="info-value">{data.participants.length}</span>
             </span>
             <span class="info-separator">·</span>
             <span class="info-item">
-                <span class="badge">{data.isGroup ? "Grup" : "1-on-1"}</span>
+                <span class="badge">{data.isGroup ? "Group" : "1-on-1"}</span>
             </span>
         </div>
     </div>

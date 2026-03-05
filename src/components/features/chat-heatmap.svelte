@@ -47,20 +47,20 @@
     // Build day-count map for selected year
     type DayEntry = { date: Date; count: number; key: string };
 
-    const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+    const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_NAMES = [
         "Jan",
         "Feb",
         "Mar",
         "Apr",
-        "Mei",
+        "May",
         "Jun",
         "Jul",
-        "Ags",
+        "Aug",
         "Sep",
-        "Okt",
+        "Oct",
         "Nov",
-        "Des",
+        "Dec",
     ];
 
     const dayCounts = $derived(() => {
@@ -139,7 +139,7 @@
     function formatDateKey(key: string) {
         const [y, mo, d] = key.split("-");
         const date = new Date(parseInt(y), parseInt(mo) - 1, parseInt(d));
-        return date.toLocaleDateString("id-ID", {
+        return date.toLocaleDateString("en-US", {
             weekday: "long",
             day: "numeric",
             month: "long",
@@ -182,8 +182,8 @@
             y: rect.top - wrapRect.top - 8,
             content:
                 day.date.getFullYear() === activeYear()
-                    ? `${formatDateKey(day.key)} · ${day.count} pesan`
-                    : `(di luar ${activeYear()})`,
+                    ? `${formatDateKey(day.key)} · ${day.count} messages`
+                    : `(outside ${activeYear()})`,
         };
     }
 
@@ -198,7 +198,7 @@
         <div>
             <h2 class="section-title">🗓️ Chat Heatmap</h2>
             <p class="section-desc">
-                Pola aktivitas chat per hari sepanjang tahun
+                Daily chat activity patterns throughout the year
             </p>
         </div>
 
@@ -218,38 +218,38 @@
     <!-- Stats row -->
     <div class="stats-row animate-fade-up" style="animation-delay: 0.05s">
         <div class="stat-card glass-card">
-            <div class="stat-label">Total Pesan {activeYear()}</div>
+            <div class="stat-label">Total Messages {activeYear()}</div>
             <div class="stat-value gradient-text">
-                {totalThisYear.toLocaleString("id-ID")}
+                {totalThisYear.toLocaleString("en-US")}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Hari Aktif</div>
+            <div class="stat-label">Active Days</div>
             <div class="stat-value gradient-text">{activeDays}</div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Rata-rata / Hari Aktif</div>
+            <div class="stat-label">Avg / Active Day</div>
             <div class="stat-value gradient-text">
                 {activeDays > 0
                     ? Math.round(totalThisYear / activeDays).toLocaleString(
-                          "id-ID",
+                          "en-US",
                       )
                     : 0}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Hari Tersibuk</div>
+            <div class="stat-label">Busiest Day</div>
             <div
                 class="stat-value gradient-text"
                 style="font-size: 0.9rem; line-height: 1.3"
             >
                 {#if peakDay()}
                     {new Date(peakDay()!.key + "T00:00:00").toLocaleDateString(
-                        "id-ID",
+                        "en-US",
                         { day: "numeric", month: "short" },
                     )}
                     <div class="stat-sub">
-                        {peakDay()!.count.toLocaleString("id-ID")} pesan
+                        {peakDay()!.count.toLocaleString("en-US")} messages
                     </div>
                 {:else}
                     -
@@ -266,7 +266,7 @@
         {#if isCalculating}
             <div class="calculating-overlay">
                 <div class="spinner"></div>
-                <p>Memetakan aktivitas harian ke kalender...</p>
+                <p>Mapping daily activity to calendar...</p>
             </div>
         {:else}
             <div class="heatmap-scroll">
@@ -327,7 +327,7 @@
                                             onmouseleave={hideTooltip}
                                             role="img"
                                             aria-label={isCurrentYear
-                                                ? `${day.key}: ${day.count} pesan`
+                                                ? `${day.key}: ${day.count} messages`
                                                 : ""}
                                         ></div>
                                     {/each}
@@ -342,7 +342,7 @@
         <!-- Legend -->
         {#if !isCalculating}
             <div class="legend">
-                <span class="legend-label">Kurang</span>
+                <span class="legend-label">Less</span>
                 <div class="legend-cells">
                     {#each [0, 0.2, 0.4, 0.65, 1] as level}
                         <div
@@ -354,7 +354,7 @@
                         ></div>
                     {/each}
                 </div>
-                <span class="legend-label">Banyak</span>
+                <span class="legend-label">More</span>
             </div>
         {/if}
     </div>
