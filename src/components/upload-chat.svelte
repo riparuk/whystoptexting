@@ -58,7 +58,10 @@
                 );
             }
 
-            setChatData(parsed);
+            const base = import.meta.env.BASE_URL;
+
+            await setChatData(parsed);
+            window.location.href = base + "/" + "analytics";
         } catch (e: any) {
             error = e.message || "Terjadi kesalahan saat memproses file.";
         } finally {

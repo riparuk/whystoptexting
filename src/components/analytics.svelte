@@ -26,7 +26,7 @@
         { id: "most-active", label: "Paling Aktif", icon: "👑" },
         { id: "chat-intensity", label: "Intensitas", icon: "📈" },
         { id: "response-time", label: "Response Time", icon: "⏱️" },
-        { id: "word-cloud", label: "Kata & Emoji", icon: "�" },
+        { id: "word-cloud", label: "Kata & Emoji", icon: "😘" },
         { id: "heatmap", label: "Heatmap", icon: "🗓️" },
     ];
 
@@ -50,23 +50,40 @@
                 tabindex="0"
                 onkeydown={(e) => e.key === "Enter" && onReset()}
             >
-                <span class="brand-icon">💬</span>
-                <span class="brand-name gradient-text">WhyStopTexting</span>
+                <span class="brand-name gradient-text tab-label"
+                    >WhyStopTexting</span
+                >
             </div>
 
-            <div class="nav-tabs">
+            <!-- Desktop tabs -->
+            <div class="nav-tabs hidden gap-2 md:flex">
                 {#each tabs as tab}
                     <button
-                        class="tab-btn"
+                        class="tab-btn flex items-center gap-2 rounded-lg px-3 py-2"
                         class:active={activeTab === tab.id}
+                        class:bg-blue-500={activeTab === tab.id}
+                        class:text-white={activeTab === tab.id}
+                        class:bg-gray-100={activeTab !== tab.id}
                         onclick={() => (activeTab = tab.id)}
-                        aria-current={activeTab === tab.id ? "page" : undefined}
                     >
                         <span class="tab-icon">{tab.icon}</span>
                         <span class="tab-label">{tab.label}</span>
                     </button>
                 {/each}
             </div>
+
+            <!-- Mobile dropdown -->
+            <select
+                bind:value={activeTab}
+                class="w-full rounded-lg border border-gray-300 p-2 text-sm md:hidden"
+            >
+                {#each tabs as tab}
+                    <option value={tab.id}>
+                        <span class="tab-icon">{tab.icon}</span>
+                        <span class="tab-label">{tab.label}</span>
+                    </option>
+                {/each}
+            </select>
 
             <div class="nav-actions">
                 <button
@@ -177,10 +194,6 @@
         text-decoration: none;
         flex-shrink: 0;
         outline: none;
-    }
-
-    .brand-icon {
-        font-size: 20px;
     }
 
     .brand-name {

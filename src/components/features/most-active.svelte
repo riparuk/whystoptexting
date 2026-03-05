@@ -297,7 +297,7 @@
                 class="stat-value gradient-text"
                 style="font-size: 1rem; truncate: ellipsis"
             >
-                {counts[0]?.name.split(" ")[0] ?? "-"}
+                {counts[0]?.name ?? "-"}
             </div>
         </div>
     </div>
