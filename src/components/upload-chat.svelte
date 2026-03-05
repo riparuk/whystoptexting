@@ -168,16 +168,18 @@
         style="animation-delay: 0.2s"
     >
         <h3 class="instructions-title">How to Export WhatsApp Chat</h3>
-        <ol class="instructions-list">
-            <li>Open the chat you want to analyze in WhatsApp</li>
-            <li>
-                Tap ⋮ (menu) → <strong>More</strong> →
-                <strong>Export chat</strong>
-            </li>
-            <li>Select <strong>Without media</strong></li>
-            <li>Save the generated ZIP file</li>
-            <li>Upload it here ✨</li>
-        </ol>
+        <p>
+            Follow the <a
+                href="https://faq.whatsapp.com/1180414079177245/?helpref=uf_share"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="click-link">official WhatsApp guide</a
+            > to export your chat history.
+        </p>
+        <p>
+            ⚠️ <strong>Important:</strong> You must select
+            <strong>"Without media"</strong> during the export process.
+        </p>
     </div>
 </div>
 
@@ -386,17 +388,5 @@
         margin: 0 0 12px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-    }
-
-    .instructions-list {
-        margin: 0;
-        padding-left: 20px;
-        color: var(--text-secondary);
-        font-size: 0.88rem;
-        line-height: 1.9;
-    }
-
-    .instructions-list strong {
-        color: var(--pink-300);
     }
 </style>
