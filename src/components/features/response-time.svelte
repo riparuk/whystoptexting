@@ -103,6 +103,68 @@
         return name.startsWith("~ ") ? name.slice(2) : name;
     }
 
+    const userStreaks = $derived.by(() => {
+        const msgs = filteredMessages();
+        const activeDaysPerUser = new Map<string, Set<string>>();
+
+        for (const p of participants) {
+            activeDaysPerUser.set(normalizeName(p), new Set());
+        }
+
+        if (msgs && msgs.length > 0) {
+            for (const m of msgs) {
+                const sender = normalizeName(m.sender);
+                if (!activeDaysPerUser.has(sender)) {
+                    activeDaysPerUser.set(sender, new Set());
+                }
+                const d = m.date;
+                const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                activeDaysPerUser.get(sender)!.add(dateKey);
+            }
+        }
+
+        const streaks: { name: string; streak: number }[] = [];
+
+        for (const [p, daysSet] of activeDaysPerUser.entries()) {
+            const sortedDays = Array.from(daysSet).sort();
+            let maxStreak = 0;
+            let currentStreak = 0;
+            let lastDate: Date | null = null;
+
+            for (const dayStr of sortedDays) {
+                const parts = dayStr.split("-");
+                const currDate = new Date(
+                    Date.UTC(
+                        Number(parts[0]),
+                        Number(parts[1]) - 1,
+                        Number(parts[2]),
+                    ),
+                );
+
+                if (!lastDate) {
+                    currentStreak = 1;
+                } else {
+                    const diff = Math.round(
+                        (currDate.getTime() - lastDate.getTime()) /
+                            (1000 * 60 * 60 * 24),
+                    );
+                    if (diff === 1) {
+                        currentStreak++;
+                    } else if (diff > 1) {
+                        currentStreak = 1;
+                    }
+                }
+                lastDate = currDate;
+                if (currentStreak > maxStreak) {
+                    maxStreak = currentStreak;
+                }
+            }
+            streaks.push({ name: p, streak: maxStreak });
+        }
+
+        return streaks.sort((a, b) => b.streak - a.streak);
+    });
+
     function formatDuration(minutes: number) {
         if (minutes < 1) return `< 1 min`;
         if (minutes < 60) return `${Math.round(minutes)} min`;
@@ -269,6 +331,28 @@
                 <p>Not enough data to calculate response time in this range.</p>
             </div>
         {:else}
+            {#if userStreaks.length > 0}
+                <!-- Streaks Section -->
+                <div
+                    class="streaks-row animate-fade-up"
+                    style="animation-delay: 0.02s"
+                >
+                    {#each userStreaks as userStreak}
+                        <div class="streak-pill glass-card">
+                            <span class="fire-emoji">🔥</span>
+                            <div class="streak-info">
+                                <span class="streak-count"
+                                    >{userStreak.streak} Days Streak</span
+                                >
+                                <span class="streak-name"
+                                    >{userStreak.name}</span
+                                >
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+
             <!-- Summary cards -->
             <div
                 class="summary-cards animate-fade-up"
@@ -474,6 +558,73 @@
     .reset-btn:hover {
         border-color: var(--border-pink);
         color: var(--pink-300);
+    }
+
+    /* Streaks */
+    .streaks-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 8px; /* space between streaks and summary cards */
+    }
+
+    .streak-pill {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 24px;
+        border-radius: 100px;
+        background: linear-gradient(
+            145deg,
+            rgba(236, 72, 153, 0.08),
+            rgba(0, 0, 0, 0.2)
+        );
+        border: 1px solid var(--border-subtle);
+        transition: all 0.3s ease;
+    }
+
+    .streak-pill:hover {
+        border-color: var(--pink-500);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);
+    }
+
+    .fire-emoji {
+        font-size: 2rem;
+        filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.5));
+        animation: pulse-fire 2s infinite alternate;
+    }
+
+    .streak-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .streak-count {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1.1;
+    }
+
+    .streak-name {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+    }
+
+    @keyframes pulse-fire {
+        0% {
+            transform: scale(1);
+            filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.3));
+        }
+        100% {
+            transform: scale(1.15);
+            filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.7));
+        }
     }
 
     /* Summary cards */
