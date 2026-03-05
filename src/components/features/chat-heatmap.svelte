@@ -8,17 +8,40 @@
 
     let { messages, dateRange }: Props = $props();
 
-    const allYears = $derived(() => {
-        const s = new Set<number>();
-        for (const m of messages) s.add(m.date.getFullYear());
-        return Array.from(s).sort((a, b) => b - a);
+    let allYears = $state<number[]>([]);
+    let dayCountsLocal = $state<Record<string, number>>({});
+    let isCalculating = $state(true);
+    let worker: Worker | null = null;
+
+    import { onMount, onDestroy } from "svelte";
+
+    onMount(() => {
+        worker = new Worker(new URL("../../lib/worker.ts", import.meta.url), {
+            type: "module",
+        });
+
+        worker.onmessage = (e) => {
+            if (e.data.type === "CHAT_HEATMAP" && e.data.success) {
+                allYears = e.data.result.allYears;
+                dayCountsLocal = e.data.result.dayCounts;
+                isCalculating = false;
+            }
+        };
+
+        worker.postMessage({
+            type: "CHAT_HEATMAP",
+            payload: { messages },
+        });
+
+        return () => worker?.terminate();
     });
 
     let selectedYear = $state(0); // 0 = use first year
 
     const activeYear = $derived(() => {
-        const years = allYears();
-        return years[selectedYear] ?? years[0] ?? new Date().getFullYear();
+        return (
+            allYears[selectedYear] ?? allYears[0] ?? new Date().getFullYear()
+        );
     });
 
     // Build day-count map for selected year
@@ -43,10 +66,10 @@
     const dayCounts = $derived(() => {
         const year = activeYear();
         const map: Record<string, number> = {};
-        for (const m of messages) {
-            if (m.date.getFullYear() !== year) continue;
-            const k = `${year}-${String(m.date.getMonth() + 1).padStart(2, "0")}-${String(m.date.getDate()).padStart(2, "0")}`;
-            map[k] = (map[k] || 0) + 1;
+        for (const [k, count] of Object.entries(dayCountsLocal)) {
+            if (k.startsWith(String(year))) {
+                map[k] = count;
+            }
         }
         return map;
     });
@@ -179,9 +202,8 @@
             </p>
         </div>
 
-        <!-- Year selector -->
         <div class="year-selector">
-            {#each allYears() as year, i}
+            {#each allYears as year, i}
                 <button
                     class="year-btn"
                     class:active={selectedYear === i}
@@ -241,90 +263,128 @@
         class="heatmap-card glass-card animate-fade-up"
         style="animation-delay: 0.1s"
     >
-        <div class="heatmap-scroll">
-            <div id="heatmap-wrap" class="heatmap-wrap">
-                <!-- Tooltip -->
-                {#if tooltip}
-                    <div
-                        class="tooltip"
-                        style="left: {tooltip.x}px; top: {tooltip.y}px"
-                    >
-                        {tooltip.content}
-                    </div>
-                {/if}
-
-                <!-- Day labels (rows) -->
-                <div class="day-labels">
-                    {#each DAY_NAMES as day, i}
-                        <div class="day-label" class:visible={i % 2 !== 0}>
-                            {day}
+        {#if isCalculating}
+            <div class="calculating-overlay">
+                <div class="spinner"></div>
+                <p>Memetakan aktivitas harian ke kalender...</p>
+            </div>
+        {:else}
+            <div class="heatmap-scroll">
+                <div id="heatmap-wrap" class="heatmap-wrap">
+                    <!-- Tooltip -->
+                    {#if tooltip}
+                        <div
+                            class="tooltip"
+                            style="left: {tooltip.x}px; top: {tooltip.y}px"
+                        >
+                            {tooltip.content}
                         </div>
-                    {/each}
-                </div>
+                    {/if}
 
-                <div class="grid-area">
-                    <!-- Month labels -->
-                    <div
-                        class="month-labels"
-                        style="position: relative; height: 20px; margin-bottom: 4px;"
-                    >
-                        {#each monthPositions() as { label, col }}
-                            <span class="month-label" style="left: {col * 14}px"
-                                >{label}</span
-                            >
-                        {/each}
-                    </div>
-
-                    <!-- Week columns -->
-                    <div class="weeks-row">
-                        {#each grid() as week, wi}
-                            <div class="week-col">
-                                {#each week as day}
-                                    {@const isCurrentYear =
-                                        day.date.getFullYear() === activeYear()}
-                                    <div
-                                        class="day-cell"
-                                        style="background: {isCurrentYear
-                                            ? cellColor(day.count, maxCount())
-                                            : 'transparent'}"
-                                        class:out-of-year={!isCurrentYear}
-                                        onmouseenter={(e) =>
-                                            isCurrentYear &&
-                                            showTooltip(e, day)}
-                                        onmouseleave={hideTooltip}
-                                        role="img"
-                                        aria-label={isCurrentYear
-                                            ? `${day.key}: ${day.count} pesan`
-                                            : ""}
-                                    ></div>
-                                {/each}
+                    <!-- Day labels (rows) -->
+                    <div class="day-labels">
+                        {#each DAY_NAMES as day, i}
+                            <div class="day-label" class:visible={i % 2 !== 0}>
+                                {day}
                             </div>
                         {/each}
                     </div>
+
+                    <div class="grid-area">
+                        <!-- Month labels -->
+                        <div
+                            class="month-labels"
+                            style="position: relative; height: 20px; margin-bottom: 4px;"
+                        >
+                            {#each monthPositions() as { label, col }}
+                                <span
+                                    class="month-label"
+                                    style="left: {col * 14}px">{label}</span
+                                >
+                            {/each}
+                        </div>
+
+                        <!-- Week columns -->
+                        <div class="weeks-row">
+                            {#each grid() as week, wi}
+                                <div class="week-col">
+                                    {#each week as day}
+                                        {@const isCurrentYear =
+                                            day.date.getFullYear() ===
+                                            activeYear()}
+                                        <div
+                                            class="day-cell"
+                                            style="background: {isCurrentYear
+                                                ? cellColor(
+                                                      day.count,
+                                                      maxCount(),
+                                                  )
+                                                : 'transparent'}"
+                                            class:out-of-year={!isCurrentYear}
+                                            onmouseenter={(e) =>
+                                                isCurrentYear &&
+                                                showTooltip(e, day)}
+                                            onmouseleave={hideTooltip}
+                                            role="img"
+                                            aria-label={isCurrentYear
+                                                ? `${day.key}: ${day.count} pesan`
+                                                : ""}
+                                        ></div>
+                                    {/each}
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        {/if}
 
         <!-- Legend -->
-        <div class="legend">
-            <span class="legend-label">Kurang</span>
-            <div class="legend-cells">
-                {#each [0, 0.2, 0.4, 0.65, 1] as level}
-                    <div
-                        class="legend-cell"
-                        style="background: {cellColor(
-                            level * maxCount(),
-                            maxCount(),
-                        )}"
-                    ></div>
-                {/each}
+        {#if !isCalculating}
+            <div class="legend">
+                <span class="legend-label">Kurang</span>
+                <div class="legend-cells">
+                    {#each [0, 0.2, 0.4, 0.65, 1] as level}
+                        <div
+                            class="legend-cell"
+                            style="background: {cellColor(
+                                level * maxCount(),
+                                maxCount(),
+                            )}"
+                        ></div>
+                    {/each}
+                </div>
+                <span class="legend-label">Banyak</span>
             </div>
-            <span class="legend-label">Banyak</span>
-        </div>
+        {/if}
     </div>
 </div>
 
 <style>
+    .calculating-overlay {
+        height: 200px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        gap: 16px;
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(236, 72, 153, 0.2);
+        border-top-color: var(--pink-500);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
     .heatmap-section {
         display: flex;
         flex-direction: column;

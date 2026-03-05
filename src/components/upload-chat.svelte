@@ -1,12 +1,7 @@
 <script lang="ts">
     import JSZip from "jszip";
-    import { parseWhatsAppChat, type ParsedChat } from "../lib/parser";
-
-    interface Props {
-        onParsed: (data: ParsedChat) => void;
-    }
-
-    let { onParsed }: Props = $props();
+    import { parseWhatsAppChat } from "../lib/parser";
+    import { setChatData } from "../lib/store";
 
     let isDragging = $state(false);
     let isLoading = $state(false);
@@ -63,7 +58,7 @@
                 );
             }
 
-            onParsed(parsed);
+            setChatData(parsed);
         } catch (e: any) {
             error = e.message || "Terjadi kesalahan saat memproses file.";
         } finally {

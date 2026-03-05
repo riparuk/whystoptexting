@@ -8,258 +8,7 @@
 
     let { messages, participants }: Props = $props();
 
-    // --- Indonesian + English stopwords ---
-    const STOPWORDS = new Set([
-        // Indonesian
-        "yang",
-        "di",
-        "dan",
-        "itu",
-        "ini",
-        "ada",
-        "ga",
-        "gak",
-        "saya",
-        "aku",
-        "lu",
-        "gue",
-        "lo",
-        "kamu",
-        "dia",
-        "kita",
-        "kalian",
-        "mereka",
-        "itu",
-        "ini",
-        "aja",
-        "juga",
-        "udah",
-        "ya",
-        "yah",
-        "yaa",
-        "yaaa",
-        "iyaa",
-        "iya",
-        "iye",
-        "si",
-        "sih",
-        "deh",
-        "dong",
-        "lah",
-        "loh",
-        "nih",
-        "tuh",
-        "nah",
-        "ber",
-        "ke",
-        "dari",
-        "untuk",
-        "dengan",
-        "pada",
-        "atau",
-        "bukan",
-        "tidak",
-        "mau",
-        "bisa",
-        "sudah",
-        "jadi",
-        "lebih",
-        "lagi",
-        "mah",
-        "juga",
-        "kalo",
-        "kalau",
-        "tapi",
-        "tapi",
-        "karena",
-        "kalau",
-        "mas",
-        "mbak",
-        "bang",
-        "pak",
-        "bu",
-        "ku",
-        "mu",
-        "nya",
-        "pun",
-        "pun",
-        "sama",
-        "sama",
-        "buat",
-        "tu",
-        "dah",
-        "dah",
-        "oh",
-        "oke",
-        "ok",
-        "ooh",
-        "makanya",
-        "kayak",
-        "kyk",
-        "udh",
-        "dah",
-        "deh",
-        "eh",
-        "ah",
-        "haha",
-        "hahaha",
-        "wkwk",
-        "wkwkwk",
-        "hehe",
-        "hahah",
-        "hhh",
-        "hh",
-        "hmm",
-        "umm",
-        "yg",
-        "tp",
-        "ga",
-        "gw",
-        "gue",
-        "lu",
-        "lo",
-        "iya",
-        "lagi",
-        "mau",
-        "bisa",
-        "udah",
-        "abis",
-        "bakal",
-        "mana",
-        "sana",
-        "sini",
-        "situ",
-        "bagi",
-        "trus",
-        "terus",
-        "gimana",
-        "bagaimana",
-        "jadi",
-        "udah",
-        "dulu",
-        "enggak",
-        "engg",
-        "engga",
-        "gada",
-        "ada",
-        "aku",
-        "kamu",
-        "emg",
-        "emang",
-        // English
-        "the",
-        "a",
-        "an",
-        "is",
-        "it",
-        "in",
-        "on",
-        "at",
-        "to",
-        "for",
-        "of",
-        "and",
-        "or",
-        "but",
-        "with",
-        "this",
-        "that",
-        "was",
-        "are",
-        "he",
-        "she",
-        "we",
-        "they",
-        "i",
-        "you",
-        "it",
-        "be",
-        "been",
-        "have",
-        "has",
-        "do",
-        "did",
-        "not",
-        "from",
-        "by",
-        "as",
-        "so",
-        "if",
-        "my",
-        "your",
-        "his",
-        "her",
-        "our",
-        "their",
-        "me",
-        "him",
-        "us",
-        "them",
-        // Omitted/system strings
-        "omitted",
-        "image",
-        "sticker",
-        "video",
-        "audio",
-        "document",
-        "gif",
-        "contact",
-        "location",
-        "message",
-        "edited",
-        "this",
-        "deleted",
-    ]);
-
-    const EMOJI_REGEX = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu;
-
-    // --- Compute words per user ---
-    function extractWords(text: string): string[] {
-        // Remove URLs
-        text = text.replace(/https?:\/\/\S+/g, "");
-        // Remove emojis for word extraction
-        text = text.replace(EMOJI_REGEX, " ");
-        // Remove symbols except apostrophes
-        text = text.replace(/[^\w\s']/g, " ");
-        return text
-            .toLowerCase()
-            .split(/\s+/)
-            .filter(
-                (w) => w.length >= 3 && !STOPWORDS.has(w) && !/^\d+$/.test(w),
-            );
-    }
-
-    function extractEmojis(text: string): string[] {
-        return Array.from(text.matchAll(EMOJI_REGEX)).map((m) => m[0]);
-    }
-
     type WordEntry = { word: string; count: number };
-
-    function topWords(msgs: Message[], limit = 20): WordEntry[] {
-        const freq: Record<string, number> = {};
-        for (const msg of msgs) {
-            for (const w of extractWords(msg.content)) {
-                freq[w] = (freq[w] || 0) + 1;
-            }
-        }
-        return Object.entries(freq)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, limit)
-            .map(([word, count]) => ({ word, count }));
-    }
-
-    function topEmojis(msgs: Message[], limit = 15): WordEntry[] {
-        const freq: Record<string, number> = {};
-        for (const msg of msgs) {
-            for (const e of extractEmojis(msg.content)) {
-                freq[e] = (freq[e] || 0) + 1;
-            }
-        }
-        return Object.entries(freq)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, limit)
-            .map(([word, count]) => ({ word, count }));
-    }
 
     // View state
     type ViewMode = "overall" | "by-user";
@@ -274,21 +23,49 @@
 
     let topN = $state(10);
 
-    const overallWords = $derived(topWords(messages, 50));
-    const overallEmojis = $derived(topEmojis(messages, 20));
+    let computedWords = $state<WordEntry[]>([]);
+    let computedEmojis = $state<WordEntry[]>([]);
+    let isCalculating = $state(true);
 
-    const userMessages = $derived(
-        messages.filter((m) => m.sender === selectedUser),
-    );
-    const userWords = $derived(topWords(userMessages, 50));
-    const userEmojis = $derived(topEmojis(userMessages, 20));
+    let worker: Worker | null = null;
+    import { onMount, onDestroy } from "svelte";
 
-    const displayedWords = $derived(
-        (viewMode === "overall" ? overallWords : userWords).slice(0, topN),
-    );
-    const displayedEmojis = $derived(
-        (viewMode === "overall" ? overallEmojis : userEmojis).slice(0, 15),
-    );
+    onMount(() => {
+        worker = new Worker(new URL("../../lib/worker.ts", import.meta.url), {
+            type: "module",
+        });
+
+        worker.onmessage = (e) => {
+            if (e.data.type === "WORD_CLOUD" && e.data.success) {
+                computedWords = e.data.result.words;
+                computedEmojis = e.data.result.emojis;
+                isCalculating = false;
+            }
+        };
+    });
+
+    onDestroy(() => {
+        if (worker) worker.terminate();
+    });
+
+    $effect(() => {
+        if (!worker) return;
+
+        isCalculating = true;
+
+        const targetMsgs =
+            viewMode === "overall"
+                ? messages
+                : messages.filter((m) => m.sender === selectedUser);
+
+        worker.postMessage({
+            type: "WORD_CLOUD",
+            payload: { messages: targetMsgs },
+        });
+    });
+
+    const displayedWords = $derived(computedWords.slice(0, topN));
+    const displayedEmojis = $derived(computedEmojis.slice(0, 15));
 
     const maxCount = $derived(displayedWords[0]?.count ?? 1);
     const maxEmojiCount = $derived(displayedEmojis[0]?.count ?? 1);
@@ -372,109 +149,57 @@
     </div>
 
     <div class="content-grid">
-        <!-- Words list -->
-        <div
-            class="words-section animate-fade-up"
-            style="animation-delay: 0.05s"
-        >
-            <div class="list-header glass-card">
-                <div class="list-hdr-text">
-                    <span class="list-title">🔤 Kata Paling Sering</span>
-                    {#if viewMode === "by-user"}
-                        <span class="badge">{selectedUser.split(" ")[0]}</span>
-                    {/if}
-                </div>
-                <span
-                    class="total-unique"
-                    style="color: var(--text-muted); font-size:0.78rem"
-                >
-                    {(viewMode === "overall"
-                        ? overallWords
-                        : userWords
-                    ).length.toLocaleString("id-ID")} kata unik
-                </span>
-            </div>
-
-            <div class="word-bars">
-                {#each displayedWords as item, i}
-                    <div
-                        class="word-bar-row animate-fade-up"
-                        style="animation-delay: {i * 0.03}s"
+        {#if isCalculating}
+            <div class="calculating-overlay glass-card">
+                <div class="spinner"></div>
+                <p>
+                    Memproses kata dan emoji...<br />
+                    <span style="font-size: 0.8em; color: var(--text-muted)"
+                        >Ini mungkin memakan waktu sebentar untuk data yang
+                        sangat besar.</span
                     >
-                        <span class="rank-num">{i + 1}</span>
-                        <span class="word-label">{item.word}</span>
-                        <div class="bar-track">
-                            <div
-                                class="bar-fill"
-                                style="width: {barWidth(
-                                    item.count,
-                                    maxCount,
-                                )}; background: {colorLevel(
-                                    item.count,
-                                    maxCount,
-                                )}"
-                            ></div>
-                        </div>
-                        <span class="word-count"
-                            >{item.count.toLocaleString("id-ID")}</span
-                        >
-                    </div>
-                {/each}
-
-                {#if displayedWords.length === 0}
-                    <div class="empty-words">
-                        Tidak ada kata yang cukup sering muncul
-                    </div>
-                {/if}
+                </p>
             </div>
-        </div>
-
-        <!-- Emojis section -->
-        <div
-            class="emojis-section animate-fade-up"
-            style="animation-delay: 0.1s"
-        >
-            <div class="list-header glass-card">
-                <span class="list-title">😊 Emoji Favorit</span>
-                {#if viewMode === "by-user"}
-                    <span class="badge">{selectedUser.split(" ")[0]}</span>
-                {/if}
-            </div>
-
-            {#if displayedEmojis.length === 0}
-                <div class="empty-emoji glass-card">
-                    <p>Tidak ada emoji terdeteksi dalam chat ini</p>
+        {:else}
+            <!-- Words list -->
+            <div
+                class="words-section animate-fade-up"
+                style="animation-delay: 0.05s"
+            >
+                <div class="list-header glass-card">
+                    <div class="list-hdr-text">
+                        <span class="list-title">🔤 Kata Paling Sering</span>
+                        {#if viewMode === "by-user"}
+                            <span class="badge"
+                                >{selectedUser.split(" ")[0]}</span
+                            >
+                        {/if}
+                    </div>
+                    <span
+                        class="total-unique"
+                        style="color: var(--text-muted); font-size:0.78rem"
+                    >
+                        {computedWords.length} teratas
+                    </span>
                 </div>
-            {:else}
-                <!-- Emoji bubbles -->
-                <div class="emoji-bubbles glass-card">
-                    {#each displayedEmojis as item, i}
-                        {@const ratio = item.count / maxEmojiCount}
+
+                <div class="word-bars">
+                    {#each displayedWords as item, i}
                         <div
-                            class="emoji-pill"
-                            title="{item.word} · {item.count.toLocaleString(
-                                'id-ID',
-                            )} kali"
-                            style="font-size: {0.9 +
-                                ratio * 1.6}rem; opacity: {0.5 + ratio * 0.5}"
+                            class="word-bar-row animate-fade-up"
+                            style="animation-delay: {i * 0.03}s"
                         >
-                            {item.word}
-                            <span class="emoji-count">{item.count}</span>
-                        </div>
-                    {/each}
-                </div>
-
-                <!-- Emoji bar chart -->
-                <div class="emoji-bars glass-card">
-                    {#each displayedEmojis.slice(0, 10) as item, i}
-                        <div class="emoji-bar-row">
-                            <span class="emoji-symbol">{item.word}</span>
+                            <span class="rank-num">{i + 1}</span>
+                            <span class="word-label">{item.word}</span>
                             <div class="bar-track">
                                 <div
-                                    class="bar-fill emoji-bar-fill"
+                                    class="bar-fill"
                                     style="width: {barWidth(
                                         item.count,
-                                        maxEmojiCount,
+                                        maxCount,
+                                    )}; background: {colorLevel(
+                                        item.count,
+                                        maxCount,
                                     )}"
                                 ></div>
                             </div>
@@ -483,9 +208,74 @@
                             >
                         </div>
                     {/each}
+
+                    {#if displayedWords.length === 0}
+                        <div class="empty-words">
+                            Tidak ada kata yang cukup sering muncul
+                        </div>
+                    {/if}
                 </div>
-            {/if}
-        </div>
+            </div>
+
+            <!-- Emojis section -->
+            <div
+                class="emojis-section animate-fade-up"
+                style="animation-delay: 0.1s"
+            >
+                <div class="list-header glass-card">
+                    <span class="list-title">😊 Emoji Favorit</span>
+                    {#if viewMode === "by-user"}
+                        <span class="badge">{selectedUser.split(" ")[0]}</span>
+                    {/if}
+                </div>
+
+                {#if displayedEmojis.length === 0}
+                    <div class="empty-emoji glass-card">
+                        <p>Tidak ada emoji terdeteksi dalam chat ini</p>
+                    </div>
+                {:else}
+                    <!-- Emoji bubbles -->
+                    <div class="emoji-bubbles glass-card">
+                        {#each displayedEmojis as item, i}
+                            {@const ratio = item.count / maxEmojiCount}
+                            <div
+                                class="emoji-pill"
+                                title="{item.word} · {item.count.toLocaleString(
+                                    'id-ID',
+                                )} kali"
+                                style="font-size: {0.9 +
+                                    ratio * 1.6}rem; opacity: {0.5 +
+                                    ratio * 0.5}"
+                            >
+                                {item.word}
+                                <span class="emoji-count">{item.count}</span>
+                            </div>
+                        {/each}
+                    </div>
+
+                    <!-- Emoji bar chart -->
+                    <div class="emoji-bars glass-card">
+                        {#each displayedEmojis.slice(0, 10) as item, i}
+                            <div class="emoji-bar-row">
+                                <span class="emoji-symbol">{item.word}</span>
+                                <div class="bar-track">
+                                    <div
+                                        class="bar-fill emoji-bar-fill"
+                                        style="width: {barWidth(
+                                            item.count,
+                                            maxEmojiCount,
+                                        )}"
+                                    ></div>
+                                </div>
+                                <span class="word-count"
+                                    >{item.count.toLocaleString("id-ID")}</span
+                                >
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -788,5 +578,33 @@
         text-align: center;
         color: var(--text-muted);
         font-size: 0.88rem;
+    }
+
+    .calculating-overlay {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        color: var(--text-secondary);
+        gap: 16px;
+        text-align: center;
+        min-height: 300px;
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(236, 72, 153, 0.2);
+        border-top-color: var(--pink-500);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>

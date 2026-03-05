@@ -1,21 +1,15 @@
 <script lang="ts">
     import UploadChat from "./upload-chat.svelte";
     import Analytics from "./analytics.svelte";
-    import { type ParsedChat } from "../lib/parser";
-
-    let parsedData = $state<ParsedChat | null>(null);
-
-    function handleParsed(data: ParsedChat) {
-        parsedData = data;
-    }
+    import { chatStore, setChatData } from "../lib/store";
 
     function reset() {
-        parsedData = null;
+        setChatData(null);
     }
 </script>
 
-{#if parsedData}
-    <Analytics data={parsedData} onReset={reset} />
+{#if $chatStore}
+    <Analytics data={$chatStore} onReset={reset} />
 {:else}
-    <UploadChat onParsed={handleParsed} />
+    <UploadChat />
 {/if}

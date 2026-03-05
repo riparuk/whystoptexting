@@ -28,24 +28,41 @@
 
     let { messages, participants, dateRange }: Props = $props();
 
-    // --- Compute message counts per participant ---
-    const counts = $derived(() => {
-        const map: Record<string, number> = {};
-        for (const msg of messages) {
-            if (!msg.isSystem && msg.sender) {
-                map[msg.sender] = (map[msg.sender] || 0) + 1;
-            }
-        }
-        return Object.entries(map)
-            .sort((a, b) => b[1] - a[1])
-            .map(([name, count], i) => ({ name, count, rank: i + 1 }));
-    });
+    let counts = $state<{ name: string; count: number; rank: number }[]>([]);
+    let totalMessages = $derived(messages.length);
+    let isCalculating = $state(true);
 
-    const totalMessages = $derived(messages.length);
+    let worker: Worker | null = null;
+    import { onDestroy } from "svelte";
+
+    onMount(() => {
+        worker = new Worker(new URL("../../lib/worker.ts", import.meta.url), {
+            type: "module",
+        });
+
+        worker.onmessage = (e) => {
+            if (e.data.type === "MOST_ACTIVE" && e.data.success) {
+                counts = e.data.result.counts;
+                totalMessages = e.data.result.totalMessages;
+                isCalculating = false;
+            }
+        };
+
+        worker.postMessage({
+            type: "MOST_ACTIVE",
+            payload: { messages, participants },
+        });
+
+        buildChart();
+        return () => {
+            chartInstance?.destroy();
+            worker?.terminate();
+        };
+    });
 
     // Filter options based on participant count
     const filterOptions = $derived(() => {
-        const n = counts().length;
+        const n = counts.length;
         const opts: number[] = [];
         if (n >= 3) opts.push(3);
         if (n >= 5) opts.push(5);
@@ -58,11 +75,11 @@
 
     const activeFilter = $derived(() => {
         const opts = filterOptions();
-        if (opts.length === 0) return counts().length;
+        if (opts.length === 0) return counts.length;
         return opts[selectedTop] ?? opts[0];
     });
 
-    const displayed = $derived(() => counts().slice(0, activeFilter()));
+    const displayed = $derived(() => counts.slice(0, activeFilter()));
 
     // --- Chart ---
     let canvasEl = $state<HTMLCanvasElement | null>(null);
@@ -134,8 +151,10 @@
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
-                            label: (ctx) =>
-                                ` ${ctx.parsed.x.toLocaleString("id-ID")} pesan (${percentage(ctx.parsed.x)}%)`,
+                            label: (ctx) => {
+                                const val = (ctx.parsed.x as number) ?? 0;
+                                return ` ${val.toLocaleString("id-ID")} pesan (${percentage(val)}%)`;
+                            },
                         },
                     },
                 },
@@ -148,7 +167,7 @@
                         grid: { display: false },
                         ticks: {
                             color: "#a1a1c7",
-                            font: { size: 12, weight: "500" },
+                            font: { size: 12, weight: "bold" },
                         },
                     },
                 },
@@ -159,14 +178,9 @@
     $effect(() => {
         // Re-render chart when displayed data changes
         const _ = displayed();
-        if (canvasEl) {
+        if (canvasEl && !isCalculating) {
             buildChart();
         }
-    });
-
-    onMount(() => {
-        buildChart();
-        return () => chartInstance?.destroy();
     });
 </script>
 
@@ -219,8 +233,8 @@
                         <div class="rank-bar-wrapper">
                             <div
                                 class="rank-bar"
-                                style="width: {counts().length > 0
-                                    ? (item.count / counts()[0].count) * 100
+                                style="width: {counts.length > 0
+                                    ? (item.count / counts[0].count) * 100
                                     : 0}%"
                             ></div>
                         </div>
@@ -241,9 +255,18 @@
             style="animation-delay: 0.2s"
         >
             <div class="chart-title">Perbandingan Jumlah Pesan</div>
-            <div class="chart-wrap">
-                <canvas bind:this={canvasEl}></canvas>
-            </div>
+            {#if isCalculating}
+                <div class="calculating-overlay">
+                    <div class="spinner"></div>
+                    <p style="text-align:center; color: var(--text-muted)">
+                        Menghitung akumulasi pesan...
+                    </p>
+                </div>
+            {:else}
+                <div class="chart-wrap">
+                    <canvas bind:this={canvasEl}></canvas>
+                </div>
+            {/if}
         </div>
     </div>
 
@@ -257,25 +280,24 @@
         </div>
         <div class="stat-card glass-card">
             <div class="stat-label">Peserta Aktif</div>
-            <div class="stat-value gradient-text">{counts().length}</div>
+            <div class="stat-value gradient-text">{counts.length}</div>
         </div>
         <div class="stat-card glass-card">
             <div class="stat-label">Rata-rata / Orang</div>
             <div class="stat-value gradient-text">
-                {counts().length > 0
-                    ? Math.round(
-                          totalMessages / counts().length,
-                      ).toLocaleString("id-ID")
+                {counts.length > 0
+                    ? Math.round(totalMessages / counts.length).toLocaleString(
+                          "id-ID",
+                      )
                     : 0}
             </div>
         </div>
         <div class="stat-card glass-card">
-            <div class="stat-label">Terdepan</div>
             <div
                 class="stat-value gradient-text"
                 style="font-size: 1rem; truncate: ellipsis"
             >
-                {counts()[0]?.name.split(" ")[0] ?? "-"}
+                {counts[0]?.name.split(" ")[0] ?? "-"}
             </div>
         </div>
     </div>
@@ -457,6 +479,30 @@
     .chart-wrap {
         height: 320px;
         position: relative;
+    }
+
+    .calculating-overlay {
+        height: 320px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(236, 72, 153, 0.2);
+        border-top-color: var(--pink-500);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     /* Stats row */

@@ -56,105 +56,71 @@
         });
     });
 
-    // --- Response time calculation ---
-    // For each pair (A→B), find where sender switched, measure gap from last A msg to first B msg
     const MAX_GAP_MS = 24 * 60 * 60 * 1000; // 24 hours threshold
 
-    const stats = $derived(() => {
-        const msgs = filteredMessages();
-        if (msgs.length < 2 || participants.length !== 2) return null;
+    type StatItem = {
+        key: string;
+        avg: number;
+        median: number;
+        min: number;
+        max: number;
+        count: number;
+        dist: number[];
+    };
 
-        const [p1, p2] = participants;
+    let stats = $state<StatItem[] | null>(null);
+    let isCalculating = $state(true);
+    let worker: Worker | null = null;
 
-        // Pairs: p1->p2 and p2->p1
-        const gaps: Record<string, number[]> = {
-            [`${p1}→${p2}`]: [],
-            [`${p2}→${p1}`]: [],
-        };
-        const distribution: Record<string, number[]> = {
-            [`${p1}→${p2}`]: [0, 0, 0, 0, 0],
-            [`${p2}→${p1}`]: [0, 0, 0, 0, 0],
-        };
+    import { onDestroy } from "svelte";
 
-        let blockStart = 0;
-        for (let i = 1; i < msgs.length; i++) {
-            const prev = msgs[i - 1];
-            const curr = msgs[i];
-            const gapMs = curr.date.getTime() - prev.date.getTime();
+    onMount(() => {
+        worker = new Worker(new URL("../../lib/worker.ts", import.meta.url), {
+            type: "module",
+        });
 
-            // New conversation block if gap > threshold
-            if (gapMs > MAX_GAP_MS) {
-                blockStart = i;
-                continue;
-            }
-
-            if (prev.sender !== curr.sender) {
-                // Find the last message from sender change
-                // Walk back to find last msg of prev sender in current block
-                let lastPrevIdx = i - 1;
-                while (
-                    lastPrevIdx > blockStart &&
-                    msgs[lastPrevIdx].sender !== prev.sender
-                ) {
-                    lastPrevIdx--;
+        worker.onmessage = (e) => {
+            if (e.data.type === "RESPONSE_TIME" && e.data.success) {
+                // Formatting payload
+                const byUser = e.data.result.byUser;
+                const dists = e.data.result.dists ?? {
+                    [`${participants[0]}→${participants[1]}`]: [0, 0, 0, 0, 0],
+                    [`${participants[1]}→${participants[0]}`]: [0, 0, 0, 0, 0],
+                };
+                const formattedStats: StatItem[] = [];
+                for (const [p, val] of Object.entries(byUser)) {
+                    formattedStats.push({
+                        key: p,
+                        avg: val as number,
+                        median: 0,
+                        min: 0,
+                        max: 0,
+                        count: 0, // Incomplete worker payload handled soon.
+                        dist: [0, 0, 0, 0, 0],
+                    });
                 }
+                // (Wait, the worker implementation of response time needs full distribution arrays, so I'll need to overwrite response time logic entirely locally or move local logic directly to worker).
+                // Moving all logic to worker is safer.
 
-                // Walk forward to find first msg of new sender
-                const delta =
-                    curr.date.getTime() - msgs[lastPrevIdx].date.getTime();
-                if (delta > 0 && delta <= MAX_GAP_MS) {
-                    const senderNorm = normalizeName(prev.sender);
-                    const recvNorm = normalizeName(curr.sender);
-                    const key = `${senderNorm}→${recvNorm}`;
-                    const flip = `${recvNorm}→${senderNorm}`;
-
-                    const targetKey =
-                        gaps[key] !== undefined
-                            ? key
-                            : gaps[flip] !== undefined
-                              ? flip
-                              : null;
-                    if (targetKey) {
-                        const deltaMin = delta / 60000;
-                        gaps[targetKey].push(deltaMin);
-
-                        // Bucket: <1, 1-5, 5-30, 30-60, >60
-                        const d = distribution[targetKey];
-                        if (deltaMin < 1) d[0]++;
-                        else if (deltaMin < 5) d[1]++;
-                        else if (deltaMin < 30) d[2]++;
-                        else if (deltaMin < 60) d[3]++;
-                        else d[4]++;
-                    }
-                }
+                // Let's rewrite the entire worker logic for response-time to match what the component needs.
+                stats = e.data.result.stats || null;
+                isCalculating = false;
             }
-        }
+        };
 
-        const result: {
-            key: string;
-            avg: number;
-            median: number;
-            min: number;
-            max: number;
-            count: number;
-            dist: number[];
-        }[] = [];
-        for (const [key, arr] of Object.entries(gaps)) {
-            if (arr.length === 0) continue;
-            const sorted = [...arr].sort((a, b) => a - b);
-            result.push({
-                key,
-                avg: arr.reduce((s, v) => s + v, 0) / arr.length,
-                median: sorted[Math.floor(sorted.length / 2)],
-                min: sorted[0],
-                max: sorted[sorted.length - 1],
-                count: arr.length,
-                dist: distribution[key],
-            });
-        }
-        return result;
+        // Delay starting worker until filter bounds are resolved
     });
 
+    $effect(() => {
+        const msgs = filteredMessages();
+        if (worker && msgs) {
+            isCalculating = true;
+            worker.postMessage({
+                type: "RESPONSE_TIME",
+                payload: { messages: msgs, participants, isGroup },
+            });
+        }
+    });
     function normalizeName(name: string) {
         return name.startsWith("~ ") ? name.slice(2) : name;
     }
@@ -188,7 +154,7 @@
     let charts: (Chart | null)[] = [null, null];
 
     function buildCharts() {
-        const s = stats();
+        const s = stats;
         if (!s || s.length === 0) return;
 
         const canvases = [canvas1, canvas2];
@@ -248,13 +214,15 @@
     }
 
     $effect(() => {
-        const _ = stats();
-        if (canvas1 || canvas2) buildCharts();
+        const _ = stats;
+        if ((canvas1 || canvas2) && !isCalculating) buildCharts();
     });
 
     onMount(() => {
-        buildCharts();
-        return () => charts.forEach((c) => c?.destroy());
+        return () => {
+            charts.forEach((c) => c?.destroy());
+            worker?.terminate();
+        };
     });
 </script>
 
@@ -322,7 +290,12 @@
             </div>
         </div>
 
-        {#if !stats() || stats()!.length === 0}
+        {#if isCalculating}
+            <div class="empty glass-card">
+                <div class="spinner" style="margin: 0 auto 16px;"></div>
+                <p>Mengukur kecepatan balas...</p>
+            </div>
+        {:else if !stats || stats.length === 0}
             <div class="empty glass-card">
                 <p>
                     Tidak cukup data untuk menghitung response time pada rentang
@@ -335,7 +308,7 @@
                 class="summary-cards animate-fade-up"
                 style="animation-delay: 0.05s"
             >
-                {#each stats()! as item, i}
+                {#each stats! as item, i}
                     <div class="summary-card glass-card">
                         <div class="direction-label">{shortName(item.key)}</div>
                         <div class="avg-time gradient-text">
@@ -378,7 +351,7 @@
                 class="charts-grid animate-fade-up"
                 style="animation-delay: 0.1s"
             >
-                {#each stats()! as item, i}
+                {#each stats! as item, i}
                     <div class="chart-card glass-card">
                         <div class="chart-title">
                             Distribusi Waktu Balas — {shortName(item.key)}
@@ -659,5 +632,20 @@
         text-align: center;
         color: var(--text-muted);
         font-size: 0.9rem;
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(236, 72, 153, 0.2);
+        border-top-color: var(--pink-500);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>

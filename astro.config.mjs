@@ -11,5 +11,8 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss()]
-  }
+  },
+
+  site: 'https://riparuk.github.io',
+  base: '/whystoptexting',
 });

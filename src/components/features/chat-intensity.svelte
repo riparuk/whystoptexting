@@ -35,20 +35,46 @@
 
     let { messages, dateRange }: Props = $props();
 
-    // Build all year-month buckets from the data
-    const allMonthBuckets = $derived(() => {
-        const map: Record<string, number> = {};
-        for (const msg of messages) {
-            const key = `${msg.date.getFullYear()}-${String(msg.date.getMonth() + 1).padStart(2, "0")}`;
-            map[key] = (map[key] || 0) + 1;
-        }
-        // Sort keys chronologically
-        return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+    let allMonthBuckets = $state<[string, number][]>([]);
+    let topGaps = $state<{ start: Date; end: Date; days: number }[]>([]);
+    let isCalculating = $state(true);
+
+    let worker: Worker | null = null;
+    import { onDestroy } from "svelte";
+
+    onMount(() => {
+        worker = new Worker(new URL("../../lib/worker.ts", import.meta.url), {
+            type: "module",
+        });
+
+        worker.onmessage = (e) => {
+            if (e.data.type === "CHAT_INTENSITY" && e.data.success) {
+                allMonthBuckets = e.data.result.allMonthBuckets;
+                // De-serialize dates across postMessage
+                topGaps = e.data.result.topGaps.map((g: any) => ({
+                    ...g,
+                    start: new Date(g.start),
+                    end: new Date(g.end),
+                }));
+                isCalculating = false;
+            }
+        };
+
+        worker.postMessage({
+            type: "CHAT_INTENSITY",
+            payload: { messages },
+        });
+
+        buildChart();
+        return () => {
+            chartInstance?.destroy();
+            worker?.terminate();
+        };
     });
 
     const allYears = $derived(() => {
         const years = new Set<number>();
-        for (const [key] of allMonthBuckets()) {
+        for (const [key] of allMonthBuckets) {
             years.add(parseInt(key.split("-")[0]));
         }
         return Array.from(years).sort((a, b) => a - b);
@@ -60,10 +86,9 @@
 
     // Initialize range to full data range on mount
     $effect(() => {
-        const buckets = allMonthBuckets();
-        if (buckets.length > 0 && !startKey) {
-            startKey = buckets[0][0];
-            endKey = buckets[buckets.length - 1][0];
+        if (allMonthBuckets.length > 0 && !startKey) {
+            startKey = allMonthBuckets[0][0];
+            endKey = allMonthBuckets[allMonthBuckets.length - 1][0];
         }
     });
 
@@ -71,7 +96,7 @@
     let chartType = $state<ChartType>("bar");
 
     const filteredBuckets = $derived(() => {
-        return allMonthBuckets().filter(([key]) => {
+        return allMonthBuckets.filter(([key]) => {
             return (!startKey || key >= startKey) && (!endKey || key <= endKey);
         });
     });
@@ -115,21 +140,6 @@
     const totalInRange = $derived(
         filteredBuckets().reduce((s, [, v]) => s + v, 0),
     );
-
-    // Conversation Gaps: top 5 longest silences
-    const topGaps = $derived(() => {
-        const msgs = messages;
-        if (msgs.length < 2) return [];
-        const gaps: { start: Date; end: Date; days: number }[] = [];
-        for (let i = 1; i < msgs.length; i++) {
-            const delta = msgs[i].date.getTime() - msgs[i - 1].date.getTime();
-            const days = delta / (1000 * 60 * 60 * 24);
-            if (days >= 1) {
-                gaps.push({ start: msgs[i - 1].date, end: msgs[i].date, days });
-            }
-        }
-        return gaps.sort((a, b) => b.days - a.days).slice(0, 5);
-    });
 
     function fmtGapDate(d: Date) {
         return d.toLocaleDateString("id-ID", {
@@ -251,12 +261,7 @@
     $effect(() => {
         const _ = filteredBuckets();
         const __ = chartType;
-        if (canvasEl) buildChart();
-    });
-
-    onMount(() => {
-        buildChart();
-        return () => chartInstance?.destroy();
+        if (canvasEl && !isCalculating) buildChart();
     });
 </script>
 
@@ -281,8 +286,8 @@
                 type="month"
                 class="month-input"
                 bind:value={startKey}
-                min={allMonthBuckets()[0]?.[0] ?? ""}
-                max={(endKey || allMonthBuckets().at(-1)?.[0]) ?? ""}
+                min={allMonthBuckets[0]?.[0] ?? ""}
+                max={(endKey || allMonthBuckets.at(-1)?.[0]) ?? ""}
             />
         </div>
         <div class="control-separator">—</div>
@@ -293,8 +298,8 @@
                 type="month"
                 class="month-input"
                 bind:value={endKey}
-                min={(startKey || allMonthBuckets()[0]?.[0]) ?? ""}
-                max={allMonthBuckets().at(-1)?.[0] ?? ""}
+                min={(startKey || allMonthBuckets[0]?.[0]) ?? ""}
+                max={allMonthBuckets.at(-1)?.[0] ?? ""}
             />
         </div>
         <div class="control-sep-vert"></div>
@@ -315,8 +320,8 @@
         <button
             class="reset-range-btn"
             onclick={() => {
-                startKey = allMonthBuckets()[0]?.[0] ?? "";
-                endKey = allMonthBuckets().at(-1)?.[0] ?? "";
+                startKey = allMonthBuckets[0]?.[0] ?? "";
+                endKey = allMonthBuckets.at(-1)?.[0] ?? "";
             }}
         >
             Reset Range
@@ -328,7 +333,12 @@
         class="chart-card glass-card animate-fade-up"
         style="animation-delay: 0.1s"
     >
-        {#if filteredBuckets().length === 0}
+        {#if isCalculating}
+            <div class="calculating-overlay">
+                <div class="spinner"></div>
+                <p>Menganalisis intensitas waktu...</p>
+            </div>
+        {:else if filteredBuckets().length === 0}
             <div class="empty-chart">
                 Tidak ada data untuk rentang yang dipilih
             </div>
@@ -402,13 +412,13 @@
     <!-- Conversation Gap -->
     <div class="gap-section animate-fade-up" style="animation-delay: 0.25s">
         <h3 class="year-title">🕳️ Conversation Gap Terpanjang</h3>
-        {#if topGaps().length === 0}
+        {#if topGaps.length === 0}
             <p style="color: var(--text-muted); font-size: 0.88rem;">
                 Tidak ada gap signifikan.
             </p>
         {:else}
             <div class="gap-list">
-                {#each topGaps() as gap, i}
+                {#each topGaps as gap, i}
                     <div class="gap-row glass-card">
                         <span class="gap-rank">#{i + 1}</span>
                         <span class="gap-dates"
@@ -425,12 +435,12 @@
     </div>
 
     <!-- Year breakdown -->
-    {#if allYears().length > 1}
+    {#if allYears().length > 1 && !isCalculating}
         <div class="year-section animate-fade-up" style="animation-delay: 0.3s">
             <h3 class="year-title">Ringkasan per Tahun</h3>
             <div class="year-cards">
                 {#each allYears() as year}
-                    {@const yearBuckets = allMonthBuckets().filter(([k]) =>
+                    {@const yearBuckets = allMonthBuckets.filter(([k]) =>
                         k.startsWith(String(year)),
                     )}
                     {@const yearTotal = yearBuckets.reduce(
@@ -439,7 +449,7 @@
                     )}
                     {@const maxYear = Math.max(
                         ...allYears().map((y) =>
-                            allMonthBuckets()
+                            allMonthBuckets
                                 .filter(([k]) => k.startsWith(String(y)))
                                 .reduce((s, [, v]) => s + v, 0),
                         ),
@@ -610,6 +620,31 @@
     .chart-wrap {
         height: 360px;
         position: relative;
+    }
+
+    .calculating-overlay {
+        height: 360px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        gap: 16px;
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(236, 72, 153, 0.2);
+        border-top-color: var(--pink-500);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .empty-chart {
