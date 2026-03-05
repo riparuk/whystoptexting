@@ -10,27 +10,6 @@ export type WorkerMessage =
     | { type: "MOST_ACTIVE"; payload: { messages: Message[], participants: string[] } }
     | { type: "CHAT_HEATMAP"; payload: { messages: Message[] } };
 
-// Helpers for word cloud
-const STOPWORDS = new Set([
-    "yang", "di", "dan", "itu", "ini", "ada", "ga", "gak", "saya", "aku", "lu",
-    "gue", "lo", "kamu", "dia", "kita", "kalian", "mereka", "aja", "juga", "udah",
-    "ya", "yah", "yaa", "yaaa", "iyaa", "iya", "iye", "si", "sih", "deh", "dong",
-    "lah", "loh", "nih", "tuh", "nah", "ber", "ke", "dari", "untuk", "dengan",
-    "pada", "atau", "bukan", "tidak", "mau", "bisa", "sudah", "jadi", "lebih",
-    "lagi", "mah", "kalo", "kalau", "tapi", "karena", "mas", "mbak", "bang", "pak",
-    "bu", "ku", "mu", "nya", "pun", "sama", "buat", "tu", "dah", "oh", "oke", "ok",
-    "ooh", "makanya", "kayak", "kyk", "udh", "eh", "ah", "haha", "hahaha", "wkwk",
-    "wkwkwk", "hehe", "hahah", "hhh", "hh", "hmm", "umm", "yg", "tp", "gw",
-    "abis", "bakal", "mana", "sana", "sini", "situ", "bagi", "trus", "terus",
-    "gimana", "bagaimana", "dulu", "enggak", "engg", "engga", "gada", "emg", "emang",
-    "the", "a", "an", "is", "it", "in", "on", "at", "to", "for", "of", "and",
-    "or", "but", "with", "this", "that", "was", "are", "he", "she", "we", "they",
-    "i", "you", "be", "been", "have", "has", "do", "did", "not", "from", "by",
-    "as", "so", "if", "my", "your", "his", "her", "our", "their", "me", "him",
-    "us", "them", "omitted", "image", "sticker", "video", "audio", "document",
-    "gif", "contact", "location", "message", "edited", "deleted"
-]);
-
 const EMOJI_REGEX = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu;
 
 function extractWords(text: string): string[] {
@@ -40,7 +19,7 @@ function extractWords(text: string): string[] {
     return text
         .toLowerCase()
         .split(/\s+/)
-        .filter((w) => w.length >= 3 && !STOPWORDS.has(w) && !/^\d+$/.test(w));
+        .filter((w) => w.length >= 3 && !/^\d+$/.test(w));
 }
 
 function extractEmojis(text: string): string[] {
