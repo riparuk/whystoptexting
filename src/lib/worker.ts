@@ -84,8 +84,8 @@ function calculateResponseTimes(messages: Message[], participants: string[], isG
 
     // Store response times in milliseconds
     const responseTimes: Record<string, number[]> = {
-        [`${p1}→${p2}`]: [], // time it takes for p2 to reply to p1
-        [`${p2}→${p1}`]: [], // time it takes for p1 to reply to p2
+        [`${p2}→${p1}`]: [], // time it takes for p2 to reply to p1
+        [`${p1}→${p2}`]: [], // time it takes for p1 to reply to p2
     };
 
     let lastSender: string | null = null;
@@ -107,7 +107,8 @@ function calculateResponseTimes(messages: Message[], participants: string[], isG
 
             if (diff > 0 && diff <= 24 * 60 * 60 * 1000) {
                 // Sender changed, so msg.sender is replying to lastSender
-                const key = `${lastSender}→${msg.sender}`;
+                // Example: B (msg.sender) replies to A (lastSender) -> key is "B→A"
+                const key = `${msg.sender}→${lastSender}`;
                 if (responseTimes[key]) {
                     responseTimes[key].push(diff);
                 }

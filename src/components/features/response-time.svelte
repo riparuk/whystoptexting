@@ -180,6 +180,17 @@
             .join(" → ");
     }
 
+    function getResponderLabel(item: StatItem) {
+        const instantPct = Math.round((item.dist[0] / item.count) * 100);
+        if (instantPct > 70)
+            return { emoji: "⚡", text: "Instant responder", color: "#eab308" }; // yellow-500
+        if (instantPct >= 40)
+            return { emoji: "🟢", text: "Fast responder", color: "#22c55e" }; // green-500
+        if (instantPct >= 20)
+            return { emoji: "🟡", text: "Normal responder", color: "#facc15" }; // yellow-400
+        return { emoji: "🐢", text: "Slow responder", color: "#9ca3af" }; // gray-400
+    }
+
     // -- Distribution chart --
     const DIST_LABELS = [
         "< 1 min",
@@ -359,20 +370,62 @@
                 style="animation-delay: 0.05s"
             >
                 {#each stats! as item, i}
+                    {@const label = getResponderLabel(item)}
+                    {@const pct1m = Math.round(
+                        (item.dist[0] / item.count) * 100,
+                    )}
+                    {@const pct5m = Math.round(
+                        ((item.dist[0] + item.dist[1]) / item.count) * 100,
+                    )}
                     <div class="summary-card glass-card">
                         <div class="direction-label">{shortName(item.key)}</div>
-                        <div class="avg-time gradient-text">
-                            {formatDuration(item.avg)}
+
+                        <div
+                            class="responder-badge"
+                            style="color: {label.color}"
+                        >
+                            {label.emoji}
+                            {label.text}
                         </div>
-                        <div class="avg-sub">average</div>
+
+                        <div
+                            class="avg-time gradient-text"
+                            style="font-size: 2.2rem; margin-top: 8px;"
+                        >
+                            {formatDuration(item.median)}
+                        </div>
+                        <div class="avg-sub" style="margin-bottom: 4px;">
+                            Median response time
+                        </div>
+
+                        <!-- Behavioral breakdown -->
+                        <div class="behavior-stats">
+                            <div class="stat-row">
+                                <span
+                                    class="stat-dot"
+                                    style="background: rgba(52, 211, 153, 0.7)"
+                                ></span>
+                                <span class="stat-text"
+                                    ><strong>{pct1m}%</strong> replies under 1 min</span
+                                >
+                            </div>
+                            <div class="stat-row">
+                                <span
+                                    class="stat-dot"
+                                    style="background: rgba(236, 72, 153, 0.8)"
+                                ></span>
+                                <span class="stat-text"
+                                    ><strong>{pct5m}%</strong> replies under 5 min</span
+                                >
+                            </div>
+                            <div class="stat-row" style="margin-top: 4px;">
+                                <span class="stat-note"
+                                    >Average: {formatDuration(item.avg)}</span
+                                >
+                            </div>
+                        </div>
 
                         <div class="meta-grid">
-                            <div class="meta-item">
-                                <div class="meta-label">Median</div>
-                                <div class="meta-value">
-                                    {formatDuration(item.median)}
-                                </div>
-                            </div>
                             <div class="meta-item">
                                 <div class="meta-label">Fastest</div>
                                 <div class="meta-value" style="color: #34d399">
@@ -413,17 +466,53 @@
                 {/each}
             </div>
 
-            <!-- Interpretation note -->
+            <!-- Legend and Interpretation note -->
             <div
                 class="note-card glass-card animate-fade-up"
-                style="animation-delay: 0.15s"
+                style="animation-delay: 0.15s; flex-direction: column; gap: 16px;"
             >
-                <span class="note-icon">💡</span>
-                <p class="note-text">
-                    Only measures reply time when the sender changes. Gaps
-                    larger than <strong>24 hours</strong> are considered new conversations
-                    and are excluded.
-                </p>
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <span class="note-icon">💡</span>
+                    <p class="note-text">
+                        Only measures reply time when the sender changes. Gaps
+                        larger than <strong>24 hours</strong> are considered new
+                        conversations and are excluded.
+                    </p>
+                </div>
+
+                <div class="legend-box">
+                    <div class="legend-title">Responder Profiling Guide:</div>
+                    <div class="legend-grid">
+                        <div class="legend-item">
+                            <span class="l-emoji">⚡</span>
+                            <span class="l-name" style="color: #eab308"
+                                >Instant</span
+                            >
+                            <span class="l-criteria">>70% under 1 min</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="l-emoji">🟢</span>
+                            <span class="l-name" style="color: #22c55e"
+                                >Fast</span
+                            >
+                            <span class="l-criteria">40–70% under 1 min</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="l-emoji">🟡</span>
+                            <span class="l-name" style="color: #facc15"
+                                >Normal</span
+                            >
+                            <span class="l-criteria">20–40% under 1 min</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="l-emoji">🐢</span>
+                            <span class="l-name" style="color: #9ca3af"
+                                >Slow</span
+                            >
+                            <span class="l-criteria">&lt;20% under 1 min</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         {/if}
     {/if}
@@ -738,6 +827,114 @@
 
     .note-text strong {
         color: var(--pink-300);
+    }
+
+    /* Legend Box */
+    .legend-box {
+        margin-top: 8px;
+        padding-top: 16px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+        width: 100%;
+    }
+
+    .legend-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 12px;
+    }
+
+    .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .l-emoji {
+        font-size: 1.1rem;
+    }
+
+    .l-name {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .l-criteria {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-left: auto;
+    }
+
+    /* Behavioral Stats */
+    .responder-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 6px 12px;
+        border-radius: 6px;
+        width: fit-content;
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+
+    .behavior-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 12px 0 16px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .stat-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .stat-text {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .stat-text strong {
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+
+    .stat-note {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-style: italic;
+        padding-left: 16px;
     }
 
     .empty {
