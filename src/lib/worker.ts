@@ -10,6 +10,21 @@ export type WorkerMessage =
     | { type: "MOST_ACTIVE"; payload: { messages: Message[], participants: string[] } }
     | { type: "CHAT_HEATMAP"; payload: { messages: Message[] } };
 
+// Helpers for word cloud
+const REMOVE_WORDS = [
+    "this message was deleted",
+    "this message was edited",
+    "image omitted",
+    "video omitted",
+    "audio omitted",
+    "document omitted",
+    "gif omitted",
+    "contact card omitted",
+    "sticker omitted"
+];
+
+const LOCATION_REGEX = /(?:location|lokasi):\s*https?:\/\//i;
+
 const EMOJI_REGEX = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu;
 
 function extractWords(text: string): string[] {
@@ -31,6 +46,11 @@ type WordEntry = { word: string; count: number };
 function topItemsFromMsgs(msgs: Message[], type: "word" | "emoji", limit = 50): WordEntry[] {
     const freq: Record<string, number> = {};
     for (const msg of msgs) {
+        const lowerContent = msg.content.toLowerCase();
+        if (REMOVE_WORDS.some(w => lowerContent.includes(w)) || LOCATION_REGEX.test(lowerContent)) {
+            continue;
+        }
+
         const items = type === "word" ? extractWords(msg.content) : extractEmojis(msg.content);
         for (const item of items) {
             freq[item] = (freq[item] || 0) + 1;
