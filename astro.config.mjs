@@ -5,9 +5,18 @@ import svelte from '@astrojs/svelte';
 
 import tailwindcss from '@tailwindcss/vite';
 
+import partytown from '@astrojs/partytown';
+
 // https://astro.build/config
 export default defineConfig({
-  integrations: [svelte()],
+  integrations: [
+    svelte(),
+    partytown({
+      config: {
+        forward: ['dataLayer.push'],
+      },
+    })
+  ],
 
   vite: {
     plugins: [tailwindcss()]
