@@ -15,8 +15,11 @@ export interface ParsedChat {
     isGroup: boolean
 }
 
-// Matches: [DD/MM/YY, HH.MM.SS] or [D/M/YY, HH.MM.SS]
-const MESSAGE_REGEX = /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}\.\d{2}\.\d{2})\]\s/
+// Matches: [DD/MM/YY, HH.MM.SS] or [DD/MM/YYYY, HH.MM.SS]
+const MESSAGE_REGEX_1 = /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}\.\d{2}\.\d{2})\]\s/
+
+// Matches: DD/MM/YY, HH:MM am/pm - or DD/MM/YYYY, HH:MM:SS -
+const MESSAGE_REGEX_2 = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}(?::\d{2})?(?:(?:\s|\u202F)?(?:am|pm|AM|PM))?)\s-\s/
 
 // System message patterns to skip from participant counting
 const SYSTEM_MESSAGE_PATTERNS = [
@@ -51,18 +54,38 @@ function isSystemMessage(content: string): boolean {
 
 function parseDate(dateStr: string, timeStr: string): Date {
     // dateStr: DD/MM/YY or DD/MM/YYYY
-    // timeStr: HH.MM.SS
+    // timeStr: HH.MM.SS or HH:MM am/pm or HH:MM:SS am/pm
     const dateParts = dateStr.split('/')
-    const timeParts = timeStr.split('.')
 
     let year = parseInt(dateParts[2])
     if (year < 100) year += 2000
 
     const month = parseInt(dateParts[1]) - 1 // 0-indexed
     const day = parseInt(dateParts[0])
-    const hours = parseInt(timeParts[0])
-    const minutes = parseInt(timeParts[1])
-    const seconds = parseInt(timeParts[2])
+
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+
+    if (timeStr.includes('.')) {
+        const timeParts = timeStr.split('.')
+        hours = parseInt(timeParts[0])
+        minutes = parseInt(timeParts[1])
+        seconds = parseInt(timeParts[2])
+    } else {
+        const cleanTime = timeStr.replace(/\u202F/g, ' ').toLowerCase()
+        const isPM = cleanTime.includes('pm')
+        const timeVal = cleanTime.replace(/\s?[ap]m/, '').trim()
+        const timeParts = timeVal.split(':')
+
+        hours = parseInt(timeParts[0])
+        if (isPM && hours < 12) hours += 12
+        if (!isPM && hours === 12) hours = 0
+        minutes = parseInt(timeParts[1])
+        if (timeParts.length > 2) {
+            seconds = parseInt(timeParts[2])
+        }
+    }
 
     return new Date(year, month, day, hours, minutes, seconds)
 }
@@ -76,7 +99,8 @@ export function parseWhatsAppChat(raw: string): ParsedChat {
     let current: Message | null = null
 
     for (const line of lines) {
-        const match = line.match(MESSAGE_REGEX)
+        let match = line.match(MESSAGE_REGEX_1)
+        if (!match) match = line.match(MESSAGE_REGEX_2)
 
         if (match) {
             // Save previous message

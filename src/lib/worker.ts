@@ -20,7 +20,8 @@ const REMOVE_WORDS = [
     "document omitted",
     "gif omitted",
     "contact card omitted",
-    "sticker omitted"
+    "sticker omitted",
+    "<media omitted>"
 ];
 
 const LOCATION_REGEX = /(?:location|lokasi):\s*https?:\/\//i;

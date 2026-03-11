@@ -18,10 +18,10 @@
 
             if (file.name.endsWith(".zip")) {
                 const zip = await JSZip.loadAsync(file);
-                const chatFile = zip.file(/(_chat\.txt)$/i)[0];
+                const chatFile = zip.file(/\.txt$/i)[0];
                 if (!chatFile) {
                     throw new Error(
-                        "ZIP file does not contain _chat.txt. Please ensure this is a WhatsApp backup export.",
+                        "ZIP file does not contain a .txt file. Please ensure this is a WhatsApp backup export.",
                     );
                 }
                 chatText = await chatFile.async("string");
@@ -42,7 +42,7 @@
             // Quick validation: check if it looks like a WhatsApp export
             if (
                 !chatText.match(
-                    /\[\d{1,2}\/\d{1,2}\/\d{2,4},\s\d{1,2}\.\d{2}\.\d{2}\]/,
+                    /(?:\[\d{1,2}\/\d{1,2}\/\d{2,4},\s\d{1,2}\.\d{2}\.\d{2}\])|(?:\d{1,2}\/\d{1,2}\/\d{2,4},\s\d{1,2}:\d{2})/,
                 )
             ) {
                 throw new Error(
